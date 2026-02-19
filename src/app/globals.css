@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+/* 
+ * Theme CSS variables
+ * Using zinc palette for consistency with shadcn/ui
+ */
+
+:root {
+  /* Light theme */
+  --background: 0 0% 100%;           /* white */
+  --foreground: 240 10% 3.9%;        /* zinc-950 */
+  
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  
+  --primary: 240 5.9% 10%;           /* zinc-900 */
+  --primary-foreground: 0 0% 98%;    /* zinc-50 */
+  
+  --secondary: 240 4.8% 95.9%;       /* zinc-100 */
+  --secondary-foreground: 240 5.9% 10%;
+  
+  --muted: 240 4.8% 95.9%;           /* zinc-100 */
+  --muted-foreground: 240 3.8% 46.1%; /* zinc-500 */
+  
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 5.9% 10%;
+  
+  --destructive: 0 84.2% 60.2%;      /* red-500 */
+  --destructive-foreground: 0 0% 98%;
+  
+  --border: 240 5.9% 90%;            /* zinc-200 */
+  --input: 240 5.9% 90%;
+  --ring: 240 5.9% 10%;
+  
+  --radius: 0.5rem;
+  
+  /* Chart colors */
+  --chart-positive: 142 76% 36%;     /* green-600 */
+  --chart-negative: 0 84% 60%;       /* red-500 */
+  --chart-neutral: 240 3.8% 46%;     /* zinc-500 */
+}
+
+.dark {
+  --background: 240 10% 3.9%;        /* zinc-950 */
+  --foreground: 0 0% 98%;            /* zinc-50 */
+  
+  --card: 240 10% 3.9%;              /* zinc-950 */
+  --card-foreground: 0 0% 98%;
+  
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  
+  --primary: 0 0% 98%;               /* zinc-50 */
+  --primary-foreground: 240 5.9% 10%;
+  
+  --secondary: 240 3.7% 15.9%;       /* zinc-800 */
+  --secondary-foreground: 0 0% 98%;
+  
+  --muted: 240 3.7% 15.9%;           /* zinc-800 */
+  --muted-foreground: 240 5% 64.9%;  /* zinc-400 */
+  
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+  
+  --destructive: 0 62.8% 30.6%;      /* red-900 */
+  --destructive-foreground: 0 0% 98%;
+  
+  --border: 240 3.7% 15.9%;          /* zinc-800 */
+  --input: 240 3.7% 15.9%;
+  --ring: 240 4.9% 83.9%;            /* zinc-300 */
+  
+  /* Chart colors - brighter for dark mode */
+  --chart-positive: 142 71% 45%;     /* green-500 */
+  --chart-negative: 0 84% 60%;       /* red-500 */
+  --chart-neutral: 240 5% 65%;       /* zinc-400 */
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Smooth theme transitions - scoped to avoid performance issues */
+.theme-transition,
+.theme-transition *,
+[data-theme-transition] {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

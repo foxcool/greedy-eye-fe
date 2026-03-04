@@ -1,0 +1,40 @@
+# Deployment configuration for development environment
+services:
+  eye-fe-dev:
+    profiles: ["default", "dev"]
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.dev
+    container_name: eye-fe-dev
+    volumes:
+      - ..:/app
+      - /app/node_modules
+      - /app/.next
+    working_dir: /app
+    command: ["npm", "run", "dev"]
+    environment:
+      NEXT_PUBLIC_API_URL: ""
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      # Frontend app routes (Next.js with basePath=/app)
+      - "traefik.http.routers.eye-fe-dev.rule=Host(`${EYE_DOMAIN:-eye-dev.localhost}`) && PathPrefix(`/app`)"
+      - "traefik.http.routers.eye-fe-dev.entrypoints=websecure"
+      - "traefik.http.routers.eye-fe-dev.tls.certresolver=myresolver"
+      - "traefik.http.routers.eye-fe-dev.priority=20"
+      - "traefik.http.services.eye-fe-dev.loadbalancer.server.port=3000"
+      # Redirect / → /app
+      - "traefik.http.routers.eye-fe-dev-root.rule=Host(`${EYE_DOMAIN}`) && Path(`/`)"
+      - "traefik.http.routers.eye-fe-dev-root.entrypoints=websecure,web"
+      - "traefik.http.routers.eye-fe-dev-root.tls.certresolver=myresolver"
+      - "traefik.http.routers.eye-fe-dev-root.middlewares=redirect-to-app"
+      - "traefik.http.routers.eye-fe-dev-root.service=eye-fe-dev"
+      - "traefik.http.middlewares.redirect-to-app.redirectregex.regex=^(https://[^/]+)/?$$"
+      - "traefik.http.middlewares.redirect-to-app.redirectregex.replacement=$${1}/app"
+      - "traefik.http.middlewares.redirect-to-app.redirectregex.permanent=true"
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true

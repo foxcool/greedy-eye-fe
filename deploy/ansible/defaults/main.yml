@@ -1,0 +1,17 @@
+---
+greedy_eye_fe_version: "latest"
+greedy_eye_fe_image: "ghcr.io/foxcool/greedy-eye-fe:{{ greedy_eye_fe_version }}"
+greedy_eye_fe_app_dir: "/opt/greedy-eye-fe"
+greedy_eye_fe_port: 3000
+
+# Shared platform domain (frontend routes: /app/*)
+# This MUST match greedy_eye_domain — all services share one domain
+greedy_eye_fe_platform_domain: "{{ greedy_eye_domain | default('eye.darkfox.info') }}"
+
+# Docker registry configuration
+greedy_eye_fe_registry_url: "ghcr.io"
+greedy_eye_fe_registry_username: ""
+greedy_eye_fe_registry_password: ""
+
+# Traefik middleware (e.g. tailscale-only)
+greedy_eye_fe_traefik_middlewares: "tailscale-only"

@@ -1,0 +1,12 @@
+---
+- name: Deploy greedy-eye frontend
+  ansible.builtin.include_tasks: deploy.yml
+  when: operation is defined and operation == "deploy"
+
+- name: Destroy greedy-eye frontend
+  ansible.builtin.include_tasks: destroy.yml
+  when: operation is defined and operation == "destroy"
+
+- name: Deploy greedy-eye frontend (default)
+  ansible.builtin.include_tasks: deploy.yml
+  when: operation is not defined

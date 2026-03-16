@@ -1,8 +1,11 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
+import { useAuth } from '@/lib/auth/auth-context'
+import { ProtectedRoute } from '@/lib/auth/protected-route'
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme()
@@ -39,11 +42,30 @@ function ThemeToggle() {
 }
 
 function Header() {
+  const { email, logout } = useAuth()
+  const router = useRouter()
+
+  async function handleLogout() {
+    await logout()
+    router.replace('/login')
+  }
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card h-14">
       <div className="flex h-full items-center justify-between px-4">
         <h1 className="text-xl font-semibold text-foreground">Greedy Eye</h1>
-        <ThemeToggle />
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          {email && (
+            <span className="text-sm text-muted-foreground hidden sm:block">{email}</span>
+          )}
+          <button
+            onClick={handleLogout}
+            className="px-3 py-1.5 bg-secondary hover:bg-secondary/80 rounded-md text-sm font-medium text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Sign out
+          </button>
+        </div>
       </div>
     </header>
   )
@@ -67,14 +89,16 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <Header />
-      <div className="flex flex-1">
-        <Sidebar />
-        <main className="flex-1 p-6">
-          {children}
-        </main>
+    <ProtectedRoute>
+      <div className="flex min-h-screen flex-col bg-background">
+        <Header />
+        <div className="flex flex-1">
+          <Sidebar />
+          <main className="flex-1 p-6">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </ProtectedRoute>
   )
 }

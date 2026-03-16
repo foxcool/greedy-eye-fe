@@ -1,0 +1,45 @@
+---
+- name: Ensure app directory exists
+  ansible.builtin.file:
+    path: "{{ greedy_eye_fe_app_dir }}"
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Copy docker-compose.yml template
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ greedy_eye_fe_app_dir }}/docker-compose.yml"
+    mode: "0640"
+  become: true
+
+- name: Login to Docker registry (if credentials provided)
+  community.docker.docker_login:
+    registry: "{{ greedy_eye_fe_registry_url | default('ghcr.io') }}"
+    username: "{{ greedy_eye_fe_registry_username }}"
+    password: "{{ greedy_eye_fe_registry_password }}"
+    reauthorize: true
+  become: true
+  when:
+    - not ansible_check_mode
+    - greedy_eye_fe_registry_username is defined and greedy_eye_fe_registry_username != ""
+    - greedy_eye_fe_registry_password is defined and greedy_eye_fe_registry_password != ""
+  no_log: true
+
+- name: Pull latest images
+  ansible.builtin.command:
+    cmd: docker compose pull --ignore-pull-failures
+    chdir: "{{ greedy_eye_fe_app_dir }}"
+  become: true
+  when: not ansible_check_mode
+  changed_when: false
+  failed_when: false
+
+- name: Deploy with docker compose
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "{{ greedy_eye_fe_app_dir }}"
+  become: true
+  register: compose_result
+  changed_when: "'Creating' in compose_result.stdout or 'Recreating' in compose_result.stdout or 'Starting' in compose_result.stdout"
+  when: not ansible_check_mode

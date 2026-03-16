@@ -63,9 +63,9 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'USDC',
     name: 'USD Coin',
     sources: [
-      { name: 'eth main aave', type: 'defi', amount: 615, chain: 'ethereum', protocol: 'aave' },
-      { name: 'eth main', type: 'wallet', amount: 778, chain: 'ethereum' },
-      { name: 'scroll main aave', type: 'defi', amount: 956, chain: 'scroll', protocol: 'aave' },
+      { name: 'eth main aave', type: 'defi', amount: 626, chain: 'ethereum', protocol: 'aave' },
+      { name: 'eth main', type: 'wallet', amount: 0, chain: 'ethereum' },
+      { name: 'scroll main aave', type: 'defi', amount: 0, chain: 'scroll', protocol: 'aave' },
       { name: 'binance', type: 'exchange', amount: 0 },
     ],
   },
@@ -74,7 +74,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'USDT',
     name: 'Tether',
     sources: [
-      { name: 'eth main', type: 'wallet', amount: 0, chain: 'ethereum' },
+      { name: 'eth main', type: 'wallet', amount: 771, chain: 'ethereum' },
       { name: 'ton seed', type: 'wallet', amount: 135, chain: 'ton' },
       { name: 'binance', type: 'exchange', amount: 47 },
       { name: 'hydration', type: 'defi', amount: 0, chain: 'hydration' },

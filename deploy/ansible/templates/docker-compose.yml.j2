@@ -1,0 +1,39 @@
+# Production deployment for greedy-eye frontend
+
+services:
+  eye-fe:
+    image: {{ greedy_eye_fe_image }}
+    container_name: eye-fe
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ""
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+
+      # Frontend under /app
+      - "traefik.http.routers.eye-fe.rule=Host(`{{ greedy_eye_fe_platform_domain }}`) && PathPrefix(`/app`)"
+      - "traefik.http.routers.eye-fe.priority=20"
+      - "traefik.http.routers.eye-fe.entrypoints=websecure"
+      - "traefik.http.routers.eye-fe.tls.certresolver=myresolver"
+      - "traefik.http.routers.eye-fe.service=eye-fe"
+{% if greedy_eye_fe_traefik_middlewares is defined and greedy_eye_fe_traefik_middlewares %}
+      - "traefik.http.routers.eye-fe.middlewares={{ greedy_eye_fe_traefik_middlewares }}"
+{% endif %}
+      - "traefik.http.services.eye-fe.loadbalancer.server.port={{ greedy_eye_fe_port }}"
+
+      # Redirect / → /app
+      - "traefik.http.routers.eye-root.rule=Host(`{{ greedy_eye_fe_platform_domain }}`) && Path(`/`)"
+      - "traefik.http.routers.eye-root.priority=5"
+      - "traefik.http.routers.eye-root.entrypoints=websecure"
+      - "traefik.http.routers.eye-root.tls.certresolver=myresolver"
+      - "traefik.http.routers.eye-root.middlewares=redirect-to-app"
+      - "traefik.http.routers.eye-root.service=eye-fe"
+      - "traefik.http.middlewares.redirect-to-app.redirectregex.regex=^(.*)$$"
+      - "traefik.http.middlewares.redirect-to-app.redirectregex.replacement=$${1}/app"
+
+networks:
+  proxy:
+    external: true

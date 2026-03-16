@@ -1,0 +1,15 @@
+---
+- name: Stop and remove containers
+  ansible.builtin.command:
+    cmd: docker compose down
+    chdir: "{{ greedy_eye_fe_app_dir }}"
+  become: true
+  when: not ansible_check_mode
+  changed_when: true
+  failed_when: false
+
+- name: Remove app directory
+  ansible.builtin.file:
+    path: "{{ greedy_eye_fe_app_dir }}"
+    state: absent
+  become: true

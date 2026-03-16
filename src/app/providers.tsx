@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { ThemeProvider, useTheme } from 'next-themes'
 import { useState, useEffect } from 'react'
 import { makeQueryClient } from '@/lib/config/query-client'
+import { AuthProvider } from '@/lib/auth/auth-context'
 
 function ThemeColorMeta() {
   const { resolvedTheme } = useTheme()
@@ -38,7 +39,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     >
       <ThemeColorMeta />
       <QueryClientProvider client={queryClient}>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>
     </ThemeProvider>

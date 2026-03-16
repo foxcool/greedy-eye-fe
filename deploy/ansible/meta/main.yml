@@ -1,0 +1,6 @@
+galaxy_info:
+  role_name: greedy_eye_fe
+  author: foxcool
+  description: Deploy Greedy Eye frontend (Next.js, Traefik)
+  license: MIT
+  min_ansible_version: "2.15"

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -12,6 +13,7 @@ import {
 } from '@/components/ui/table'
 import { AccountForm } from './account-form'
 import { useAccounts, useCreateAccount, useUpdateAccount, useDeleteAccount } from '@/hooks/use-accounts'
+import { syncAccount } from '@/lib/api/portfolio-api'
 import type { Account } from '@/lib/api/backend-types'
 
 const TYPE_LABELS: Record<string, string> = {
@@ -27,8 +29,15 @@ export function AccountList() {
   const update = useUpdateAccount()
   const remove = useDeleteAccount()
 
+  const queryClient = useQueryClient()
+  const sync = useMutation({
+    mutationFn: (id: string) => syncAccount(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['holdings'] }),
+  })
+
   const [createOpen, setCreateOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Account | null>(null)
+  const [syncingId, setSyncingId] = useState<string | null>(null)
 
   if (isLoading) return <p className="text-muted-foreground">Loading accounts…</p>
   if (error) return <p className="text-destructive">Failed to load accounts.</p>
@@ -72,6 +81,19 @@ export function AccountList() {
                 <TableCell className="text-muted-foreground">{a.description ?? '—'}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
+                    {a.type === 'ACCOUNT_TYPE_WALLET' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={sync.isPending && syncingId === a.id}
+                        onClick={() => {
+                          setSyncingId(a.id)
+                          sync.mutate(a.id, { onSettled: () => setSyncingId(null) })
+                        }}
+                      >
+                        {sync.isPending && syncingId === a.id ? 'Syncing…' : 'Sync'}
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={() => setEditTarget(a)}>
                       Edit
                     </Button>

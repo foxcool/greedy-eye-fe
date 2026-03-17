@@ -119,3 +119,14 @@ export async function updateAccount(
 export async function deleteAccount(id: string): Promise<void> {
   await apiClient.post(RPC('DeleteAccount'), { id })
 }
+
+export interface SyncAccountResponse {
+  accountId: string
+  assetsUpserted: number
+  holdingsUpserted: number
+  errors: string[]
+}
+
+export async function syncAccount(accountId: string): Promise<SyncAccountResponse> {
+  return apiClient.post<SyncAccountResponse>(RPC('SyncAccount'), { accountId })
+}

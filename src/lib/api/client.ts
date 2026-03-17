@@ -23,19 +23,24 @@ class ApiError extends Error {
 }
 
 class ApiClient {
+  // Empty string means relative URLs (behind Traefik proxy).
   private baseURL: string
   private defaultHeaders: HeadersInit
   private defaultTimeout: number
   private defaultRetries: number
 
   constructor(options: ApiClientOptions = {}) {
-    this.baseURL = options.baseURL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+    // Use ?? (not ||) so that empty string is preserved as "use relative URLs"
+    const envUrl = process.env.NEXT_PUBLIC_API_URL
+    this.baseURL = options.baseURL ?? envUrl ?? 'http://localhost:8080'
+    const mockUserId = process.env.NEXT_PUBLIC_MOCK_USER_ID
     this.defaultHeaders = {
       'Content-Type': 'application/json',
+      ...(mockUserId ? { 'X-User-Id': mockUserId, 'X-User-Email': 'dev@greedyeye.local' } : {}),
       ...options.headers,
     }
-    this.defaultTimeout = options.timeout || 30000
-    this.defaultRetries = options.retries || 3
+    this.defaultTimeout = options.timeout ?? 10000  // 10s — fail fast
+    this.defaultRetries = options.retries ?? 1      // 1 retry — avoid 90s hangs
   }
 
   private async fetchWithRetry<T>(
@@ -50,6 +55,7 @@ class ApiClient {
 
         const response = await fetch(url, {
           ...options,
+          credentials: 'include',
           signal: controller.signal,
         })
 
@@ -59,12 +65,11 @@ class ApiClient {
           const error = await response.json().catch(() => ({}))
           throw new ApiError(
             response.status,
-            error.message || `HTTP ${response.status}: ${response.statusText}`,
+            (error as { message?: string }).message || `HTTP ${response.status}: ${response.statusText}`,
             error
           )
         }
 
-        // Handle empty responses
         const text = await response.text()
         return text ? JSON.parse(text) : ({} as T)
       } catch (error) {
@@ -73,9 +78,8 @@ class ApiClient {
           throw error
         }
 
-        // Retry on network errors or 5xx errors
         if (attempt < retries) {
-          const backoff = Math.min(1000 * Math.pow(2, attempt), 10000)
+          const backoff = Math.min(1000 * Math.pow(2, attempt), 5000)
           await new Promise(resolve => setTimeout(resolve, backoff))
           continue
         }
@@ -88,14 +92,21 @@ class ApiClient {
   }
 
   private buildURL(path: string, params?: Record<string, string | number | boolean>): string {
-    const url = new URL(path, this.baseURL)
+    if (!this.baseURL) {
+      // Relative URL — served behind a proxy (e.g. Traefik)
+      if (!params) return path
+      const qs = new URLSearchParams(
+        Object.entries(params).map(([k, v]) => [k, String(v)])
+      ).toString()
+      return `${path}?${qs}`
+    }
 
+    const url = new URL(path, this.baseURL)
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         url.searchParams.append(key, String(value))
       })
     }
-
     return url.toString()
   }
 

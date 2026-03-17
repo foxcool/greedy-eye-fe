@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -71,13 +71,32 @@ function Header() {
   )
 }
 
+const NAV_LINKS = [
+  { href: '/', label: 'Dashboard' },
+  { href: '/portfolios', label: 'Portfolios' },
+  { href: '/accounts', label: 'Accounts' },
+  { href: '/assets', label: 'Assets' },
+]
+
 function Sidebar() {
+  const pathname = usePathname()
   return (
     <aside className="w-64 border-r border-border bg-card p-4">
       <nav className="space-y-2" aria-label="Main navigation">
-        <Link href="/" className="block px-3 py-2 rounded-lg bg-secondary text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Dashboard</Link>
-        <Link href="/portfolios" className="block px-3 py-2 rounded-lg hover:bg-secondary text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Portfolios</Link>
-        <Link href="/assets" className="block px-3 py-2 rounded-lg hover:bg-secondary text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Assets</Link>
+        {NAV_LINKS.map(({ href, label }) => {
+          const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href)
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={`block px-3 py-2 rounded-lg text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors ${
+                isActive ? 'bg-secondary' : 'hover:bg-secondary/60'
+              }`}
+            >
+              {label}
+            </Link>
+          )
+        })}
       </nav>
     </aside>
   )

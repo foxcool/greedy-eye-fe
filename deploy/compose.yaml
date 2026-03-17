@@ -13,7 +13,10 @@ services:
     working_dir: /app
     command: ["npm", "run", "dev"]
     environment:
-      NEXT_PUBLIC_API_URL: ""
+      NEXT_PUBLIC_API_URL: ""          # Относительные URL — через Traefik к бэкенду
+      NEXT_PUBLIC_USE_BACKEND: "true"  # Использовать backend API
+      NEXT_PUBLIC_USE_LIVE_PRICES: "true"
+      # NEXT_PUBLIC_MOCK_USER_ID не задаётся — используется реальный auth через Traefik forwardAuth
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"

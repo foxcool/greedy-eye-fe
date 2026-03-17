@@ -14,7 +14,7 @@ import type { HoldingSource } from '../types/portfolio-view'
 // RAW HOLDINGS DATA (from R script)
 // ============================================================================
 
-interface RawHolding {
+export interface RawHolding {
   assetId: string       // coingecko ID
   symbol: string
   name: string

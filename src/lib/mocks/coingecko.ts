@@ -32,13 +32,14 @@ export async function fetchPrices(): Promise<Record<string, { price: number; cha
   
   const url = `${COINGECKO_API}/coins/markets?vs_currency=usd&ids=${idsParam}`
   
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 8000) // 8s timeout
+
   const response = await fetch(url, {
-    headers: {
-      'Accept': 'application/json',
-    },
-    // CoinGecko free tier: cache for 60s to avoid rate limits
-    next: { revalidate: 60 }
+    headers: { 'Accept': 'application/json' },
+    signal: controller.signal,
   })
+  clearTimeout(timeout)
 
   if (!response.ok) {
     throw new Error(`CoinGecko API error: ${response.status} ${response.statusText}`)

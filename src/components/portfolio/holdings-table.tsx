@@ -64,7 +64,7 @@ export function HoldingsTable({ maxRows, showSources = true }: HoldingsTableProp
             />
           ))}
         </tbody>
-        {totalValue && (
+        {totalValue != null && (
           <tfoot className="bg-muted/50 border-t border-border">
             <tr className="text-sm font-medium">
               <td className="px-4 py-3"></td>

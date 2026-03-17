@@ -37,7 +37,9 @@ export interface PortfolioSummary {
   holdings: PortfolioHolding[]
   allocations: TargetAllocation[]
   lastUpdated: Date
-  isLivePrices?: boolean    // true if prices from live API
+  isLivePrices?: boolean          // true if prices from live API
+  portfolioId?: string            // backend portfolio ID if connected
+  dataSource?: 'backend' | 'coingecko' | 'mock'
 }
 
 // For charts (index signature required for Recharts compatibility)

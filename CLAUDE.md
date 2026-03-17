@@ -1,40 +1,35 @@
-# Greedy Eye Frontend - Context for Claude
+# Greedy Eye Frontend — Claude Context
 
-## Project Overview
+## Current State (2026-03-17)
 
-Frontend for Greedy Eye portfolio management platform. Dashboard-style UI for tracking crypto, stocks, and other assets.
-
-## Current State (2026-01-06)
-
-**Status**: Portfolio Dashboard MVP working with live CoinGecko prices
+**Status**: Backend integrated. Auth via psina (forwardAuth). Connect-RPC API layer.
 
 ### What's Implemented
-- Portfolio summary card (total value, 24h change)
-- Holdings table with expandable source breakdown
-- Allocation bars (replaced pie chart) with target comparison
-- Theme toggle (light/dark/system)
-- Live prices from CoinGecko with mock fallback
-
-### Data Flow
-```
-usePortfolio() hook
-    ↓
-fetchPricesWithFallback() → CoinGecko API (or mocks)
-    ↓
-calculatePortfolio() 
-    ↓
-UI Components
-```
+- Dashboard: total portfolio value, 24h change, holdings table, allocation bars
+- Live CoinGecko prices (60s polling) with mock fallback
+- Backend mode: holdings/accounts/assets from backend API, value from CalculatePortfolioValue
+- Auth: login/register pages, auth-context, protected routes, auto-refresh on 401
+- Pages: Dashboard (`/`), Portfolios (`/portfolios`, `/portfolios/[id]`), Accounts, Assets
+- Sidebar with active link highlighting
 
 ## Technology Stack
 
-- **Framework**: Next.js 15 (App Router)
-- **Language**: TypeScript 5
+- **Framework**: Next.js 15 (App Router), TypeScript
 - **Styling**: Tailwind CSS + shadcn/ui (zinc theme)
-- **State**: TanStack Query v5 (server state), React state (local)
-- **Charts**: Recharts
-- **Forms**: React Hook Form + Zod
-- **Themes**: next-themes
+- **State**: TanStack Query v5 (server), React state (local)
+- **API**: Connect-RPC via fetch (POST to `/eye.v1.*` endpoints)
+- **Auth**: psina service via Traefik forwardAuth (X-User-Id header)
+
+## Dev Workflow
+
+```bash
+# Local dev (direct backend access, mock user):
+npm run dev           # → http://localhost:3000
+
+# Docker (via Traefik, real auth):
+cd deploy && docker compose up
+# → https://eye-dev.darkfox.info/app
+```
 
 ## Key Files
 
@@ -42,92 +37,65 @@ UI Components
 src/
 ├── app/
 │   ├── (dashboard)/
-│   │   ├── layout.tsx      # Header, Sidebar, ThemeToggle (inlined)
-│   │   └── page.tsx        # Dashboard with portfolio components
-│   ├── globals.css         # Theme CSS variables
-│   ├── layout.tsx          # Root layout
-│   └── providers.tsx       # TanStack Query + ThemeProvider
-├── components/
-│   ├── portfolio/
-│   │   ├── portfolio-summary-card.tsx
-│   │   ├── holdings-table.tsx
-│   │   ├── allocation-bars.tsx
-│   │   └── index.ts
-│   └── theme-toggle.tsx
+│   │   ├── layout.tsx          # Header + Sidebar
+│   │   ├── page.tsx            # Dashboard
+│   │   ├── portfolios/         # List + [id] detail
+│   │   ├── accounts/
+│   │   └── assets/
+│   ├── login/ register/        # Auth pages
+│   └── providers.tsx           # QueryClient + ThemeProvider
+├── components/portfolio/       # Summary card, holdings table, allocation bars
 ├── hooks/
-│   └── use-portfolio.ts    # usePortfolio, useHoldings, etc.
+│   ├── use-portfolio.ts        # Dashboard data (backend/coingecko/mock)
+│   ├── use-portfolios.ts       # CRUD hooks
+│   ├── use-holdings.ts
+│   ├── use-accounts.ts
+│   └── use-assets.ts
 └── lib/
-    ├── mocks/
-    │   ├── portfolio-data.ts   # Holdings from R script
-    │   ├── portfolio-utils.ts  # Calculation logic
-    │   └── coingecko.ts       # Live price fetching
-    ├── api/client.ts          # HTTP client
-    ├── config/query-client.ts
-    └── types/
-        ├── api.ts             # Generated from OpenAPI
-        └── portfolio-view.ts  # UI-specific types
-```
-
-## Development
-
-```bash
-npm run dev              # Start dev server (port 3000)
-npm run build            # Production build
-npm run lint             # ESLint check
+    ├── api/
+    │   ├── client.ts           # ApiClient (relative URLs, 401→refresh→retry)
+    │   ├── portfolio-api.ts    # Connect-RPC calls
+    │   ├── assets-api.ts
+    │   ├── adapters.ts         # Backend → RawHolding conversion
+    │   └── backend-types.ts    # TypeScript types for backend responses
+    ├── auth/
+    │   ├── api.ts              # login/logout/checkAuth/refreshToken
+    │   └── auth-context.tsx    # useAuth() hook
+    └── mocks/                  # Fallback mock data + CoinGecko fetcher
 ```
 
 ## Environment Variables
 
 ```bash
-# .env.local
-NEXT_PUBLIC_API_URL=http://localhost:8080
-NEXT_PUBLIC_USE_LIVE_PRICES=true    # CoinGecko live prices
-NEXT_PUBLIC_USE_BACKEND=false       # Backend API (future)
+# .env.local (local dev — NOT used by Docker)
+NEXT_PUBLIC_API_URL=http://localhost:8080    # direct backend
+NEXT_PUBLIC_USE_BACKEND=true
+NEXT_PUBLIC_USE_LIVE_PRICES=true
+NEXT_PUBLIC_MOCK_USER_ID=dev-user-local     # injects X-User-Id for direct access
 ```
 
-## Common Tasks
+Docker gets env from `deploy/compose.yaml` (empty API_URL = relative URLs via Traefik).
 
-### Update Holdings Data
-Edit `src/lib/mocks/portfolio-data.ts`:
-- `rawHoldings` — token amounts by source
-- `targetPercentages` — desired allocation %
+## Auth Flow
 
-### Regenerate Types from Backend
-```bash
-npx swagger2openapi ../greedy-eye/docs/openapi.yaml -o src/lib/types/openapi-v3.yaml
-npx openapi-typescript src/lib/types/openapi-v3.yaml -o src/lib/types/api.ts
 ```
+Browser → Traefik → psina /verify (forwardAuth)
+                         ↓ 200 + X-User-Id header
+                    → eye-fe (Next.js)
+                    → eye (backend)
+```
+- Local dev with `NEXT_PUBLIC_MOCK_USER_ID`: injects header directly, no psina needed
+- Token TTL: 15min. client.ts auto-calls `/auth.v1.AuthService/Refresh` on 401
 
-### Add shadcn Component
+## Data Flow (use-portfolio.ts)
+
+1. `USE_BACKEND=true` → listHoldings (all portfolios) + listAccounts + listAssets
+   → CoinGecko prices → calculatePortfolio() + backend CalculatePortfolioValue
+2. `USE_LIVE_PRICES=true` → mock holdings + CoinGecko prices
+3. fallback → mock holdings + mock prices
+
+## Add shadcn Component
+
 ```bash
 npx shadcn@latest add [component-name]
 ```
-
-## Architecture Notes
-
-1. **Layout components inlined** — Header, Sidebar, ThemeToggle are in layout.tsx (should extract later)
-2. **No backend yet** — data from CoinGecko + mocks only
-3. **Semantic CSS** — use `bg-card`, `text-foreground`, `border-border` for theme compatibility
-
-## Next Steps
-
-- [ ] Extract inlined components to separate files
-- [ ] Manual holding form (add/edit CEX balances)
-- [ ] Connect to backend PriceService
-- [ ] E2E smoke tests
-
-## Quick Reference
-
-| Resource | Location |
-|----------|----------|
-| Dev server | http://localhost:3000 |
-| Backend API | http://localhost:8080 |
-| Session log | `docs/SESSION_LOG.md` |
-| Architecture | `docs/ARCHITECTURE_DECISIONS.md` |
-| Backend docs | `../greedy-eye/docs/architecture.md` |
-
-## Known Issues
-
-1. CoinGecko rate limits (10-30 calls/min free tier)
-2. Some CSS variables may not resolve in Tailwind v4
-3. Layout components should be extracted from layout.tsx

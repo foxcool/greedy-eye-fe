@@ -21,7 +21,7 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
       # Frontend app routes (Next.js with basePath=/app)
-      - "traefik.http.routers.eye-fe-dev.rule=Host(`${EYE_DOMAIN:-eye-dev.localhost}`) && PathPrefix(`/app`)"
+      - "traefik.http.routers.eye-fe-dev.rule=Host(`${EYE_DOMAIN:-eye-dev.localhost}`) && (PathPrefix(`/app`) || PathPrefix(`/__nextjs_font`) || PathPrefix(`/_next`))"
       - "traefik.http.routers.eye-fe-dev.entrypoints=websecure"
       - "traefik.http.routers.eye-fe-dev.tls.certresolver=myresolver"
       - "traefik.http.routers.eye-fe-dev.priority=20"

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { HoldingsManager } from './components/holdings-manager'
-import { apiClient } from '@/lib/api/client'
+import { getPortfolio } from '@/lib/api/portfolio-api'
 import type { Portfolio } from '@/lib/api/backend-types'
 
 interface PageProps {
@@ -17,7 +17,7 @@ export default function PortfolioDetailPage({ params }: PageProps) {
 
   const { data: portfolio, isLoading, error } = useQuery({
     queryKey: ['portfolios', id],
-    queryFn: () => apiClient.get<Portfolio>(`/api/v1/portfolios/${id}`),
+    queryFn: () => getPortfolio(id),
   })
 
   if (isLoading) {

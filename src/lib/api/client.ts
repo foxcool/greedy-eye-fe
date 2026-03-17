@@ -43,6 +43,31 @@ class ApiClient {
     this.defaultRetries = options.retries ?? 1      // 1 retry — avoid 90s hangs
   }
 
+  private async doFetch<T>(url: string, options: RequestInit): Promise<T> {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), this.defaultTimeout)
+
+    const response = await fetch(url, {
+      ...options,
+      credentials: 'include',
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeout)
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new ApiError(
+        response.status,
+        (error as { message?: string }).message || `HTTP ${response.status}: ${response.statusText}`,
+        error
+      )
+    }
+
+    const text = await response.text()
+    return text ? JSON.parse(text) : ({} as T)
+  }
+
   private async fetchWithRetry<T>(
     url: string,
     options: RequestInit,
@@ -50,30 +75,19 @@ class ApiClient {
   ): Promise<T> {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const controller = new AbortController()
-        const timeout = setTimeout(() => controller.abort(), this.defaultTimeout)
-
-        const response = await fetch(url, {
-          ...options,
-          credentials: 'include',
-          signal: controller.signal,
-        })
-
-        clearTimeout(timeout)
-
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({}))
-          throw new ApiError(
-            response.status,
-            (error as { message?: string }).message || `HTTP ${response.status}: ${response.statusText}`,
-            error
-          )
+        return await this.doFetch<T>(url, options)
+      } catch (error) {
+        // On 401: attempt token refresh once, then retry the original request
+        if (error instanceof ApiError && error.status === 401 && attempt === 0) {
+          const { refreshToken } = await import('@/lib/auth/api')
+          const refreshed = await refreshToken()
+          if (refreshed) continue
+          // Refresh failed — redirect to login
+          if (typeof window !== 'undefined') window.location.href = '/login'
+          throw error
         }
 
-        const text = await response.text()
-        return text ? JSON.parse(text) : ({} as T)
-      } catch (error) {
-        // Don't retry on 4xx errors (client errors)
+        // Don't retry other 4xx errors
         if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
           throw error
         }

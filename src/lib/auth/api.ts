@@ -27,10 +27,9 @@ export async function logout(): Promise<Response> {
 
 export async function checkAuth(): Promise<boolean> {
   try {
-    const res = await fetch("/eye.v1.PortfolioService/ListPortfolios", {
+    const res = await fetch("/auth.v1.AuthService/Verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
       credentials: "include",
     });
     return res.ok;
@@ -40,6 +39,18 @@ export async function checkAuth(): Promise<boolean> {
       console.warn("[auth] API unreachable, using mock auth (NEXT_PUBLIC_MOCK_USER_ID set)");
       return true;
     }
+    return false;
+  }
+}
+
+export async function refreshToken(): Promise<boolean> {
+  try {
+    const res = await fetch("/auth.v1.AuthService/Refresh", {
+      method: "POST",
+      credentials: "include",
+    });
+    return res.ok;
+  } catch {
     return false;
   }
 }

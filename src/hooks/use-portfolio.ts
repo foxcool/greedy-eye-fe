@@ -41,30 +41,29 @@ export function usePortfolio() {
           return { ...calculatePortfolio([], {}), isLivePrices: false, dataSource: 'backend' as const }
         }
 
-        const portfolioId = portfolios[0].id
-
-        // Fetch all data in parallel (BE value + holdings + prices)
-        const [holdings, accounts, assets, beValue, priceResult] = await Promise.all([
-          listHoldings({ portfolioId }),
+        // Fetch all data in parallel — holdings across ALL portfolios for dashboard overview
+        const [holdings, accounts, assets, beValues, priceResult] = await Promise.all([
+          listHoldings({}), // no portfolioId filter — aggregate all
           listAccounts(),
           listAssets(),
-          calculatePortfolioValue(portfolioId, 'usd').catch(() => null),
+          Promise.all(portfolios.map(p => calculatePortfolioValue(p.id, 'usd').catch(() => null))),
           USE_LIVE_PRICES ? fetchPricesWithFallback(mockPrices) : Promise.resolve({ prices: mockPrices, isLive: false }),
         ])
 
         const rawHoldings = buildRawHoldings(holdings, accounts, assets)
         const portfolio = calculatePortfolio(rawHoldings, priceResult.prices)
 
-        // Replace total value with BE calculated value if available and non-zero
-        const totalValue = beValue?.totalValueAmount
-          ? holdingToDecimal(beValue.totalValueAmount, beValue.decimals)
-          : portfolio.totalValue
+        // Sum BE calculated values across all portfolios if available
+        const beTotal = beValues.reduce((sum, v) => {
+          if (!v?.totalValueAmount) return sum
+          return sum + holdingToDecimal(v.totalValueAmount, v.decimals)
+        }, 0)
+        const totalValue = beTotal > 0 ? beTotal : portfolio.totalValue
 
         return {
           ...portfolio,
           totalValue,
           isLivePrices: priceResult.isLive,
-          portfolioId,
           dataSource: 'backend' as const,
         }
       }

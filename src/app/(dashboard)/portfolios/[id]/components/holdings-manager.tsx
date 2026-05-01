@@ -15,10 +15,107 @@ import { useHoldingsQuery, useCreateHolding, useUpdateHolding } from '@/hooks/us
 import { useAccounts } from '@/hooks/use-accounts'
 import { useAssets } from '@/hooks/use-assets'
 import { holdingToDecimal } from '@/lib/api/backend-types'
-import type { Holding } from '@/lib/api/backend-types'
+import type { Account, Holding } from '@/lib/api/backend-types'
 
 interface HoldingsManagerProps {
   portfolioId: string
+}
+
+const ACCOUNT_TYPE_LABEL: Record<string, string> = {
+  ACCOUNT_TYPE_WALLET: 'Wallet',
+  ACCOUNT_TYPE_EXCHANGE: 'Exchange',
+  ACCOUNT_TYPE_BROKER: 'Broker',
+  ACCOUNT_TYPE_BANK: 'Bank',
+}
+
+function AccountGroup({
+  account,
+  holdings,
+  assetMap,
+  onExclude,
+  onEdit,
+  isPending,
+}: {
+  account: Account
+  holdings: Holding[]
+  assetMap: Map<string, { symbol?: string; name: string }>
+  onExclude: (h: Holding) => void
+  onEdit: (h: Holding) => void
+  isPending: boolean
+}) {
+  const included = holdings.filter((h) => !h.excluded)
+  const excluded = holdings.filter((h) => h.excluded)
+  const typeLabel = ACCOUNT_TYPE_LABEL[account.type] ?? account.type
+
+  return (
+    <div className="rounded-lg border border-border overflow-hidden">
+      {/* Account header */}
+      <div className="flex items-center justify-between px-4 py-2.5 bg-muted/40 border-b border-border">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-sm">{account.name}</span>
+          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+            {typeLabel}
+          </span>
+          {account.data?.address && (
+            <span className="text-xs text-muted-foreground font-mono truncate max-w-[14ch]" title={account.data.address}>
+              {account.data.address.slice(0, 6)}…{account.data.address.slice(-4)}
+            </span>
+          )}
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {included.length} asset{included.length !== 1 ? 's' : ''}
+          {excluded.length > 0 && `, ${excluded.length} excluded`}
+        </span>
+      </div>
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Asset</TableHead>
+            <TableHead className="text-right">Amount</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {holdings.map((h) => {
+            const asset = assetMap.get(h.assetId)
+            const amount = holdingToDecimal(h.amount, h.decimals)
+            return (
+              <TableRow key={h.id} className={h.excluded ? 'opacity-40' : undefined}>
+                <TableCell>
+                  <span className="font-medium">{asset?.symbol ?? h.assetId}</span>
+                  {asset?.name && (
+                    <span className="ml-1 text-xs text-muted-foreground">{asset.name}</span>
+                  )}
+                  {h.excluded && (
+                    <span className="ml-2 text-[10px] uppercase tracking-wide text-destructive font-semibold">excluded</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-sm">
+                  {amount.toLocaleString('en-US', { maximumFractionDigits: 8 })}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onExclude(h)}
+                      disabled={isPending}
+                    >
+                      {h.excluded ? 'Include' : 'Exclude'}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => onEdit(h)}>
+                      Edit
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  )
 }
 
 export function HoldingsManager({ portfolioId }: HoldingsManagerProps) {
@@ -34,7 +131,19 @@ export function HoldingsManager({ portfolioId }: HoldingsManagerProps) {
   const isLoading = holdingsLoading || accountsLoading || assetsLoading
 
   const accountMap = new Map(accounts.map((a) => [a.id, a]))
-  const assetMap = new Map(assets.map((a) => [a.id, a]))
+  const assetMap = new Map(assets.map((a) => [a.id, { symbol: a.symbol, name: a.name }]))
+
+  // Group holdings by accountId, preserving account order from accounts list
+  const groups = accounts
+    .map((acc) => ({
+      account: acc,
+      holdings: holdings.filter((h) => h.accountId === acc.id),
+    }))
+    .filter((g) => g.holdings.length > 0)
+
+  // Holdings with unknown accounts (shouldn't happen, but safe fallback)
+  const knownAccountIds = new Set(accounts.map((a) => a.id))
+  const orphaned = holdings.filter((h) => !knownAccountIds.has(h.accountId))
 
   if (isLoading) return <p className="text-muted-foreground text-sm">Loading holdings…</p>
 
@@ -51,48 +160,42 @@ export function HoldingsManager({ portfolioId }: HoldingsManagerProps) {
           <Button size="sm" onClick={() => setAddOpen(true)}>Add first holding</Button>
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Asset</TableHead>
-              <TableHead>Account</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {holdings.map((h) => {
-              const asset = assetMap.get(h.assetId)
-              const account = accountMap.get(h.accountId)
-              const amount = holdingToDecimal(h.amount, h.decimals)
-              return (
-                <TableRow key={h.id}>
-                  <TableCell>
-                    <span className="font-medium">{asset?.symbol ?? h.assetId}</span>
-                    {asset?.name && (
-                      <span className="ml-1 text-xs text-muted-foreground">{asset.name}</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {account?.name ?? h.accountId}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {amount.toLocaleString('en-US', { maximumFractionDigits: 8 })}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditTarget(h)}
-                    >
-                      Edit
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
+        <div className="space-y-4">
+          {groups.map(({ account, holdings: groupHoldings }) => (
+            <AccountGroup
+              key={account.id}
+              account={account}
+              holdings={groupHoldings}
+              assetMap={assetMap}
+              isPending={update.isPending}
+              onExclude={(h) => update.mutate({ id: h.id, excluded: !h.excluded })}
+              onEdit={(h) => setEditTarget(h)}
+            />
+          ))}
+          {orphaned.length > 0 && (
+            <div className="rounded-lg border border-border overflow-hidden">
+              <div className="px-4 py-2.5 bg-muted/40 border-b border-border text-sm text-muted-foreground">
+                Unknown account
+              </div>
+              <Table>
+                <TableBody>
+                  {orphaned.map((h) => {
+                    const asset = assetMap.get(h.assetId)
+                    return (
+                      <TableRow key={h.id}>
+                        <TableCell>{asset?.symbol ?? h.assetId}</TableCell>
+                        <TableCell className="text-right tabular-nums text-sm">
+                          {holdingToDecimal(h.amount, h.decimals).toLocaleString('en-US', { maximumFractionDigits: 8 })}
+                        </TableCell>
+                        <TableCell />
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
       )}
 
       <HoldingForm

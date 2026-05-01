@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/table'
 import { AccountForm } from './account-form'
 import { useAccounts, useCreateAccount, useUpdateAccount, useDeleteAccount } from '@/hooks/use-accounts'
+import { usePortfolios } from '@/hooks/use-portfolios'
 import { syncAccount } from '@/lib/api/portfolio-api'
 import type { Account } from '@/lib/api/backend-types'
 
@@ -25,9 +26,12 @@ const TYPE_LABELS: Record<string, string> = {
 
 export function AccountList() {
   const { data: accounts = [], isLoading, error } = useAccounts()
+  const { data: portfolios = [] } = usePortfolios()
   const create = useCreateAccount()
   const update = useUpdateAccount()
   const remove = useDeleteAccount()
+
+  const portfolioById = Object.fromEntries(portfolios.map((p) => [p.id, p.name]))
 
   const queryClient = useQueryClient()
   const sync = useMutation({
@@ -65,6 +69,7 @@ export function AccountList() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead>Portfolio</TableHead>
               <TableHead>Description</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -77,6 +82,9 @@ export function AccountList() {
                   <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-secondary text-secondary-foreground">
                     {TYPE_LABELS[a.type] ?? a.type}
                   </span>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {a.portfolioId ? portfolioById[a.portfolioId] ?? '—' : '—'}
                 </TableCell>
                 <TableCell className="text-muted-foreground">{a.description ?? '—'}</TableCell>
                 <TableCell className="text-right">

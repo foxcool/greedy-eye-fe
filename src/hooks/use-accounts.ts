@@ -23,7 +23,7 @@ export function useUpdateAccount() {
     mutationFn: ({
       id,
       ...data
-    }: { id: string } & Partial<Pick<Account, 'name' | 'description' | 'type'>>) =>
+    }: { id: string } & Partial<Pick<Account, 'name' | 'description' | 'type' | 'data' | 'portfolioId'>>) =>
       updateAccount(id, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['accounts'] }),
   })

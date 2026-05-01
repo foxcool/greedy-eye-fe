@@ -1,12 +1,14 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   checkAuth as apiCheckAuth,
   login as apiLogin,
   logout as apiLogout,
   register as apiRegister,
 } from "./api";
+import { setUnauthenticatedHandler } from "@/lib/api/client";
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -23,6 +25,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [email, setEmail] = useState<string | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    setUnauthenticatedHandler(() => router.replace("/login"));
+  }, [router]);
 
   useEffect(() => {
     apiCheckAuth().then((authenticated) => {

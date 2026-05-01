@@ -34,7 +34,8 @@ const CHART_COLORS = [
 export function calculatePortfolio(
   holdings = rawHoldings,
   prices = mockPrices,
-  targets = targetPercentages
+  targets = targetPercentages,
+  options: { includeZeroValue?: boolean } = {}
 ): PortfolioSummary {
   // Step 1: Calculate holdings with values
   const portfolioHoldings: PortfolioHolding[] = holdings
@@ -55,7 +56,7 @@ export function calculatePortfolio(
         sources: holding.sources.filter(s => s.amount > 0), // exclude zero balances
       }
     })
-    .filter((h) => h.value > 0) // exclude zero-value holdings
+    .filter((h) => options.includeZeroValue ? h.quantity > 0 : h.value > 0)
 
   // Step 2: Calculate total and percentages
   const totalValue = portfolioHoldings.reduce((sum, h) => sum + h.value, 0)

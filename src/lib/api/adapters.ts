@@ -33,6 +33,7 @@ export function buildRawHoldings(
   // Group holdings by assetId
   const byAsset = new Map<string, Holding[]>()
   for (const h of holdings) {
+    if (h.excluded) continue
     const group = byAsset.get(h.assetId) ?? []
     group.push(h)
     byAsset.set(h.assetId, group)

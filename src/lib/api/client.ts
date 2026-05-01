@@ -22,6 +22,22 @@ class ApiError extends Error {
   }
 }
 
+// Allows the auth layer to register a redirect handler that uses Next.js router
+// (which respects basePath). Falls back to window.location if not set.
+let unauthenticatedHandler: (() => void) | null = null
+
+export function setUnauthenticatedHandler(handler: () => void) {
+  unauthenticatedHandler = handler
+}
+
+function redirectToLogin() {
+  if (unauthenticatedHandler) {
+    unauthenticatedHandler()
+  } else if (typeof window !== 'undefined') {
+    window.location.href = '/login'
+  }
+}
+
 class ApiClient {
   // Empty string means relative URLs (behind Traefik proxy).
   private baseURL: string
@@ -47,6 +63,7 @@ class ApiClient {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), this.defaultTimeout)
 
+    // Attach Bearer token if available (psina JWT flow)
     const response = await fetch(url, {
       ...options,
       credentials: 'include',
@@ -82,8 +99,8 @@ class ApiClient {
           const { refreshToken } = await import('@/lib/auth/api')
           const refreshed = await refreshToken()
           if (refreshed) continue
-          // Refresh failed — redirect to login
-          if (typeof window !== 'undefined') window.location.href = '/login'
+          // Refresh failed — redirect to login via registered handler (respects basePath)
+          redirectToLogin()
           throw error
         }
 

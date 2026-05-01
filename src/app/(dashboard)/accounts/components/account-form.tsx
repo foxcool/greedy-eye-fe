@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { Account, AccountType } from '@/lib/api/backend-types'
+import { usePortfolios } from '@/hooks/use-portfolios'
 
 const ACCOUNT_TYPES: { value: AccountType; label: string; hint: string }[] = [
   { value: 'ACCOUNT_TYPE_WALLET', label: 'Wallet', hint: 'On-chain wallet (MetaMask, Ledger, etc.)' },
@@ -39,6 +40,13 @@ const schema = z.object({
     'ACCOUNT_TYPE_BANK',
   ] as const),
   description: z.string().max(300).optional(),
+  portfolioId: z.string().optional(),
+  address: z.string().optional(),
+  chain: z.string().optional(),
+}).superRefine((values, ctx) => {
+  if (values.type === 'ACCOUNT_TYPE_WALLET' && !values.address) {
+    ctx.addIssue({ code: 'custom', path: ['address'], message: 'Address is required for wallet accounts' })
+  }
 })
 
 type FormValues = z.infer<typeof schema>
@@ -46,18 +54,23 @@ type FormValues = z.infer<typeof schema>
 interface AccountFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (values: { name: string; type: AccountType; description?: string }) => void
+  onSubmit: (values: { name: string; type: AccountType; description?: string; data?: Record<string, string>; portfolioId?: string }) => void
   isLoading?: boolean
   initial?: Account
 }
 
 export function AccountForm({ open, onOpenChange, onSubmit, isLoading, initial }: AccountFormProps) {
+  const { data: portfolios = [] } = usePortfolios()
+
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: initial?.name ?? '',
       type: (initial?.type as FormValues['type'] | undefined) ?? 'ACCOUNT_TYPE_WALLET',
       description: initial?.description ?? '',
+      portfolioId: initial?.portfolioId ?? '',
+      address: initial?.data?.address ?? '',
+      chain: initial?.data?.chain ?? '',
     },
   })
 
@@ -67,11 +80,30 @@ export function AccountForm({ open, onOpenChange, onSubmit, isLoading, initial }
         name: initial?.name ?? '',
         type: (initial?.type as FormValues['type'] | undefined) ?? 'ACCOUNT_TYPE_WALLET',
         description: initial?.description ?? '',
+        portfolioId: initial?.portfolioId ?? '',
+        address: initial?.data?.address ?? '',
+        chain: initial?.data?.chain ?? '',
       })
     }
   }, [open, initial, reset])
 
   const selectedType = watch('type')
+  const selectedPortfolioId = watch('portfolioId')
+
+  function handleSubmitValues(values: FormValues) {
+    const data: Record<string, string> = {}
+    if (values.type === 'ACCOUNT_TYPE_WALLET') {
+      if (values.address) data.address = values.address
+      if (values.chain) data.chain = values.chain
+    }
+    onSubmit({
+      name: values.name,
+      type: values.type,
+      description: values.description,
+      portfolioId: values.portfolioId || undefined,
+      data: Object.keys(data).length > 0 ? data : undefined,
+    })
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -79,7 +111,7 @@ export function AccountForm({ open, onOpenChange, onSubmit, isLoading, initial }
         <DialogHeader>
           <DialogTitle>{initial ? 'Edit Account' : 'New Account'}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(handleSubmitValues)} className="space-y-4">
           <div className="space-y-1">
             <Label htmlFor="acc-name">Name</Label>
             <Input id="acc-name" {...register('name')} placeholder="eth main, binance, …" />
@@ -103,6 +135,47 @@ export function AccountForm({ open, onOpenChange, onSubmit, isLoading, initial }
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          {selectedType === 'ACCOUNT_TYPE_WALLET' && (
+            <div className="space-y-3 rounded-md border border-border p-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Wallet credentials</p>
+              <div className="space-y-1">
+                <Label htmlFor="acc-address">Address</Label>
+                <Input id="acc-address" {...register('address')} placeholder="0x… or bc1…" />
+                {errors.address && <p className="text-sm text-destructive">{errors.address.message}</p>}
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="acc-chain">Chains</Label>
+                <Input id="acc-chain" {...register('chain')} placeholder="auto-detect (leave blank)" />
+                <p className="text-xs text-muted-foreground">
+                  Leave blank to auto-detect active chains. Or specify manually: <code className="font-mono">eth,base,arbitrum</code>
+                </p>
+              </div>
+            </div>
+          )}
+          <div className="space-y-1">
+            <Label>Portfolio</Label>
+            <Select
+              value={selectedPortfolioId ?? ''}
+              onValueChange={(v) => setValue('portfolioId', v === '__none__' ? '' : v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="No portfolio" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">
+                  <span className="text-muted-foreground">No portfolio</span>
+                </SelectItem>
+                {portfolios.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Holdings synced from this account will be assigned to this portfolio by default.
+            </p>
           </div>
           <div className="space-y-1">
             <Label htmlFor="acc-desc">Description</Label>

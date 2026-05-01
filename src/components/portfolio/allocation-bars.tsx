@@ -23,10 +23,21 @@ export function AllocationBars({
     return <BarsSkeleton count={8} />
   }
 
-  if (error || !holdings || !totalValue) {
+  if (error) {
     return (
       <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
         <p className="text-destructive">Failed to load allocation data</p>
+      </div>
+    )
+  }
+
+  if (!holdings || holdings.length === 0 || !totalValue) {
+    return (
+      <div className="rounded-lg border border-border bg-card p-6">
+        <h3 className="text-sm font-medium text-muted-foreground mb-3">Allocation</h3>
+        <p className="text-sm text-muted-foreground">
+          No price data available — allocation requires priced holdings.
+        </p>
       </div>
     )
   }

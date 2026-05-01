@@ -34,6 +34,7 @@ export interface Holding {
   assetId: string
   accountId: string
   portfolioId?: string
+  excluded?: boolean
   createdAt: string
   updatedAt: string
 }
@@ -44,6 +45,8 @@ export interface Account {
   name: string
   description?: string
   type: AccountType
+  data?: Record<string, string>
+  portfolioId?: string
   createdAt: string
   updatedAt: string
 }

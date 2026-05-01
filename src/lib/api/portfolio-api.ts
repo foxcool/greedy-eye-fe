@@ -83,7 +83,7 @@ export async function createHolding(data: {
 
 export async function updateHolding(
   id: string,
-  data: Partial<Pick<Holding, 'amount' | 'decimals'>>
+  data: Partial<Pick<Holding, 'amount' | 'decimals' | 'excluded'>>
 ): Promise<Holding> {
   return apiClient.post<Holding>(RPC('UpdateHolding'), {
     holding: { id, ...data },
@@ -97,22 +97,30 @@ export async function listAccounts(): Promise<Account[]> {
   return res.accounts ?? []
 }
 
-export async function createAccount(data: {
+export async function createAccount(input: {
   name: string
   type: Account['type']
   description?: string
+  data?: Record<string, string>
+  portfolioId?: string
 }): Promise<Account> {
   return apiClient.post<Account>(RPC('CreateAccount'), {
-    account: { name: data.name, type: data.type, description: data.description },
+    account: {
+      name: input.name,
+      type: input.type,
+      description: input.description,
+      data: input.data,
+      portfolioId: input.portfolioId || undefined,
+    },
   })
 }
 
 export async function updateAccount(
   id: string,
-  data: Partial<Pick<Account, 'name' | 'description' | 'type'>>
+  input: Partial<Pick<Account, 'name' | 'description' | 'type' | 'data' | 'portfolioId'>>
 ): Promise<Account> {
   return apiClient.post<Account>(RPC('UpdateAccount'), {
-    account: { id, ...data },
+    account: { id, ...input },
   })
 }
 

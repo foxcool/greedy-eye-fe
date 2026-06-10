@@ -2,44 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useTheme } from 'next-themes'
-import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth/auth-context'
 import { ProtectedRoute } from '@/lib/auth/protected-route'
-
-function ThemeToggle() {
-  const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) {
-    return (
-      <button
-        className="px-3 py-1 bg-gray-300 rounded"
-        aria-label="Loading theme"
-        disabled
-      >
-        ...
-      </button>
-    )
-  }
-
-  const nextTheme = theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark'
-  const label = theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '🖥️'
-
-  return (
-    <button
-      onClick={() => setTheme(nextTheme)}
-      aria-label={`Switch to ${nextTheme} theme`}
-      className="px-3 py-1.5 bg-secondary hover:bg-secondary/80 rounded-md text-sm font-medium text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      {label} {theme}
-    </button>
-  )
-}
+import { ThemeToggle } from '@/components/theme-toggle'
 
 function Header() {
   const { email, logout } = useAuth()

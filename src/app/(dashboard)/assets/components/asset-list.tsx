@@ -128,9 +128,9 @@ export function AssetList() {
         onOpenChange={(open) => { if (!open) setEditTarget(null) }}
         initial={editTarget ?? undefined}
         isLoading={update.isPending}
-        onSubmit={({ id: _id, ...values }) =>
+        onSubmit={(values) =>
           update.mutate(
-            { id: editTarget!.id, ...values },
+            { ...values, id: editTarget!.id },
             { onSuccess: () => setEditTarget(null) }
           )
         }

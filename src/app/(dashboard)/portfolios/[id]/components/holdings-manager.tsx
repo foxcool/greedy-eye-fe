@@ -130,7 +130,6 @@ export function HoldingsManager({ portfolioId }: HoldingsManagerProps) {
 
   const isLoading = holdingsLoading || accountsLoading || assetsLoading
 
-  const accountMap = new Map(accounts.map((a) => [a.id, a]))
   const assetMap = new Map(assets.map((a) => [a.id, { symbol: a.symbol, name: a.name }]))
 
   // Group holdings by accountId, preserving account order from accounts list

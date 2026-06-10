@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/table'
 import { AssetForm } from './asset-form'
 import { useAssets, useCreateAsset, useUpdateAsset, useDeleteAsset } from '@/hooks/use-assets'
+import { usePrices, coingeckoIdBySymbol } from '@/hooks/use-prices'
+import { formatCurrency } from '@/lib/mocks'
 import type { Asset } from '@/lib/api/backend-types'
 
 const ASSET_TYPE_LABELS: Record<string, string> = {
@@ -24,8 +26,24 @@ const ASSET_TYPE_LABELS: Record<string, string> = {
   ASSET_TYPE_FUND: 'Fund',
 }
 
+function contractAddress(asset: Asset): string | undefined {
+  return asset.tags
+    ?.find((t) => t.startsWith('contract:'))
+    ?.slice('contract:'.length)
+}
+
+/** External info page: CoinGecko for known tokens, Etherscan for contracts. */
+function externalUrl(asset: Asset): string | undefined {
+  const coingeckoId = asset.symbol && coingeckoIdBySymbol[asset.symbol.toUpperCase()]
+  if (coingeckoId) return `https://www.coingecko.com/en/coins/${coingeckoId}`
+  const contract = contractAddress(asset)
+  if (contract) return `https://etherscan.io/token/${contract}`
+  return undefined
+}
+
 export function AssetList() {
   const { data: assets = [], isLoading, error } = useAssets()
+  const { data: priceResult } = usePrices()
   const create = useCreateAsset()
   const update = useUpdateAsset()
   const remove = useDeleteAsset()
@@ -73,25 +91,57 @@ export function AssetList() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
               <TableHead>Symbol</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead>Tags</TableHead>
+              <TableHead className="text-right">Price</TableHead>
+              <TableHead>Contract</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((a) => (
-              <TableRow key={a.id}>
-                <TableCell className="font-mono text-sm">{a.id}</TableCell>
-                <TableCell className="font-medium">{a.symbol ?? '—'}</TableCell>
+            {filtered.map((a) => {
+              const url = externalUrl(a)
+              const price = a.symbol
+                ? priceResult?.prices[a.symbol.toUpperCase()]?.price
+                : undefined
+              const contract = contractAddress(a)
+              return (
+              <TableRow key={a.id} title={a.id}>
+                <TableCell className="font-medium">
+                  {url ? (
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline decoration-dotted underline-offset-2 hover:text-primary"
+                    >
+                      {a.symbol ?? '—'}
+                    </a>
+                  ) : (
+                    a.symbol ?? '—'
+                  )}
+                </TableCell>
                 <TableCell>{a.name}</TableCell>
                 <TableCell className="text-muted-foreground text-sm">
                   {ASSET_TYPE_LABELS[a.type] ?? a.type}
                 </TableCell>
-                <TableCell className="text-muted-foreground text-sm">
-                  {a.tags?.length ? a.tags.join(', ') : '—'}
+                <TableCell className="text-right tabular-nums">
+                  {price != null ? formatCurrency(price) : '—'}
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm font-mono">
+                  {contract ? (
+                    <a
+                      href={`https://etherscan.io/token/${contract}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-primary"
+                    >
+                      {contract.slice(0, 6)}…{contract.slice(-4)}
+                    </a>
+                  ) : (
+                    '—'
+                  )}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
@@ -109,7 +159,8 @@ export function AssetList() {
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+              )
+            })}
           </TableBody>
         </Table>
       )}

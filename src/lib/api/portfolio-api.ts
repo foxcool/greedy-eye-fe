@@ -8,7 +8,9 @@ const RPC = (method: string) => `/eye.v1.PortfolioService/${method}`
 // --- Portfolios ---
 
 export async function listPortfolios(): Promise<Portfolio[]> {
-  const res = await apiClient.post<{ portfolios?: Portfolio[] }>(RPC('ListPortfolios'), {})
+  const res = await apiClient.post<{ portfolios?: Portfolio[] }>(RPC('ListPortfolios'), {
+    pageSize: 500,
+  })
   return res.portfolios ?? []
 }
 
@@ -53,14 +55,26 @@ export interface ListHoldingsOptions {
   assetId?: string
 }
 
+// Backend pages default to 20 rows — follow nextPageToken to fetch everything.
 export async function listHoldings(opts: ListHoldingsOptions = {}): Promise<Holding[]> {
-  const body: Record<string, string> = {}
-  if (opts.portfolioId) body['portfolioId'] = opts.portfolioId
-  if (opts.accountId) body['accountId'] = opts.accountId
-  if (opts.assetId) body['assetId'] = opts.assetId
+  const all: Holding[] = []
+  let pageToken: string | undefined
+  for (let page = 0; page < 50; page++) {
+    const body: Record<string, unknown> = { pageSize: 500 }
+    if (opts.portfolioId) body['portfolioId'] = opts.portfolioId
+    if (opts.accountId) body['accountId'] = opts.accountId
+    if (opts.assetId) body['assetId'] = opts.assetId
+    if (pageToken) body['pageToken'] = pageToken
 
-  const res = await apiClient.post<{ holdings?: Holding[] }>(RPC('ListHoldings'), body)
-  return res.holdings ?? []
+    const res = await apiClient.post<{ holdings?: Holding[]; nextPageToken?: string }>(
+      RPC('ListHoldings'),
+      body
+    )
+    all.push(...(res.holdings ?? []))
+    if (!res.nextPageToken) break
+    pageToken = res.nextPageToken
+  }
+  return all
 }
 
 export async function createHolding(data: {
@@ -93,7 +107,9 @@ export async function updateHolding(
 // --- Accounts ---
 
 export async function listAccounts(): Promise<Account[]> {
-  const res = await apiClient.post<{ accounts?: Account[] }>(RPC('ListAccounts'), {})
+  const res = await apiClient.post<{ accounts?: Account[] }>(RPC('ListAccounts'), {
+    pageSize: 500,
+  })
   return res.accounts ?? []
 }
 

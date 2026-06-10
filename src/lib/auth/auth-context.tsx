@@ -32,11 +32,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   useEffect(() => {
-    apiCheckAuth().then((authenticated) => {
+    apiCheckAuth().then(({ authenticated, email: verifiedEmail }) => {
       setIsAuthenticated(authenticated);
-      if (authenticated && process.env.NEXT_PUBLIC_MOCK_USER_ID) {
-        setEmail("demo@greedyeye.local");
-      }
+      setEmail(verifiedEmail);
       setIsLoading(false);
     });
   }, []);

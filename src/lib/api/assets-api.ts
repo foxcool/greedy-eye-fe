@@ -11,14 +11,24 @@ export interface ListAssetsOptions {
   pageToken?: string
 }
 
+// Backend pages default to 20 rows — follow nextPageToken to fetch everything.
 export async function listAssets(opts: ListAssetsOptions = {}): Promise<Asset[]> {
-  const body: Record<string, unknown> = {}
-  if (opts.tags?.length) body['tags'] = opts.tags
-  if (opts.pageSize) body['pageSize'] = opts.pageSize
-  if (opts.pageToken) body['pageToken'] = opts.pageToken
+  const all: Asset[] = []
+  let pageToken = opts.pageToken
+  for (let page = 0; page < 50; page++) {
+    const body: Record<string, unknown> = { pageSize: opts.pageSize ?? 500 }
+    if (opts.tags?.length) body['tags'] = opts.tags
+    if (pageToken) body['pageToken'] = pageToken
 
-  const res = await apiClient.post<{ assets?: Asset[] }>(RPC('ListAssets'), body)
-  return res.assets ?? []
+    const res = await apiClient.post<{ assets?: Asset[]; nextPageToken?: string }>(
+      RPC('ListAssets'),
+      body
+    )
+    all.push(...(res.assets ?? []))
+    if (!res.nextPageToken) break
+    pageToken = res.nextPageToken
+  }
+  return all
 }
 
 export async function createAsset(data: {

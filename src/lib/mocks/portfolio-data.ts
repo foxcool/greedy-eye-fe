@@ -23,6 +23,12 @@ export interface RawHolding {
 
 export const rawHoldings: RawHolding[] = [
   {
+    assetId: 'wrapped-bitcoin',
+    symbol: 'WBTC',
+    name: 'Wrapped Bitcoin',
+    sources: [],
+  },
+  {
     assetId: 'bitcoin',
     symbol: 'BTC',
     name: 'Bitcoin',

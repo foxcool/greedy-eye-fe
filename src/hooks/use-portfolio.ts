@@ -59,17 +59,19 @@ export function usePortfolio() {
         ])
 
         const rawHoldings = buildRawHoldings(holdings, accounts, assets)
-        // Use includeZeroValue so backend holdings without price data still appear in the list.
-        // Price matching only works for assets that happen to share a CoinGecko ID.
-        const portfolio = calculatePortfolio(rawHoldings, priceResult.prices, undefined, { includeZeroValue: true })
+        // Holdings without a price (no CoinGecko match) are dropped from the
+        // dashboard — they would render as zero-value noise rows.
+        const portfolio = calculatePortfolio(rawHoldings, priceResult.prices)
 
         // Sum backend-calculated portfolio values (uses stored prices, COALESCE for portfolio_id).
         const beTotal = beValues.reduce((sum, v) => {
           if (!v?.totalValueAmount) return sum
           return sum + holdingToDecimal(v.totalValueAmount, v.decimals)
         }, 0)
-        // Prefer backend total; fall back to client-calculated (CoinGecko match) if backend returns 0.
-        const totalValue = beTotal > 0 ? beTotal : portfolio.totalValue
+        // Prefer the client-calculated total: it uses the same prices as the
+        // rendered holdings rows, so the summary stays consistent with them.
+        // Backend total (stored prices, currently ETH/USDT only) is the fallback.
+        const totalValue = portfolio.totalValue > 0 ? portfolio.totalValue : beTotal
 
         return {
           ...portfolio,

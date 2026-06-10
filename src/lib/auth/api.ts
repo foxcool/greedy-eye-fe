@@ -37,8 +37,15 @@ export async function logout(): Promise<Response> {
   });
 }
 
-export async function checkAuth(): Promise<boolean> {
-  if (process.env.NEXT_PUBLIC_MOCK_USER_ID) return true
+export interface AuthCheckResult {
+  authenticated: boolean
+  email: string | null
+}
+
+export async function checkAuth(): Promise<AuthCheckResult> {
+  if (process.env.NEXT_PUBLIC_MOCK_USER_ID) {
+    return { authenticated: true, email: "demo@greedyeye.local" }
+  }
 
   try {
     const res = await fetch(`${AUTH_BASE}/Verify`, {
@@ -47,12 +54,35 @@ export async function checkAuth(): Promise<boolean> {
       body: "{}",
       credentials: "include",
     })
-    if (res.ok) return true
+    if (res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { email?: string }
+      return { authenticated: true, email: body.email ?? null }
+    }
     // Access token expired — attempt silent refresh via refresh cookie
-    if (res.status === 401) return refreshToken()
-    return false
+    if (res.status === 401 && (await refreshToken())) {
+      // Re-verify to pick up the email after the refresh
+      return checkAuthOnce()
+    }
+    return { authenticated: false, email: null }
   } catch {
-    return false
+    return { authenticated: false, email: null }
+  }
+}
+
+// Single Verify call without refresh retry (avoids refresh loops).
+async function checkAuthOnce(): Promise<AuthCheckResult> {
+  try {
+    const res = await fetch(`${AUTH_BASE}/Verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+      credentials: "include",
+    })
+    if (!res.ok) return { authenticated: false, email: null }
+    const body = (await res.json().catch(() => ({}))) as { email?: string }
+    return { authenticated: true, email: body.email ?? null }
+  } catch {
+    return { authenticated: false, email: null }
   }
 }
 

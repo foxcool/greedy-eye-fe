@@ -3,7 +3,7 @@ import { QueryClient } from '@tanstack/react-query'
 export const queryClientConfig = {
   defaultOptions: {
     queries: {
-      staleTime: 30 * 1000,        // 30 seconds - data считается "fresh"
+      staleTime: 30 * 1000,        // 30 seconds — data stays fresh
       gcTime: 5 * 60 * 1000,        // 5 minutes - garbage collection time
       retry: 3,                      // Retry failed requests 3 times
       retryDelay: (attemptIndex: number) =>

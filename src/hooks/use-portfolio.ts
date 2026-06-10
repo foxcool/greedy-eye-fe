@@ -16,7 +16,7 @@ import {
 } from '@/lib/mocks'
 import type { PortfolioSummary, AllocationSlice } from '@/lib/types/portfolio-view'
 import { listPortfolios, listHoldings, listAccounts, calculatePortfolioValue } from '@/lib/api/portfolio-api'
-import { listAssets } from '@/lib/api/assets-api'
+import { listAssets, fetchExternalPrices } from '@/lib/api/assets-api'
 import { buildRawHoldings } from '@/lib/api/adapters'
 import { holdingToDecimal } from '@/lib/api/backend-types'
 
@@ -40,6 +40,14 @@ export function usePortfolio() {
           // No portfolios yet — return empty portfolio
           return { ...calculatePortfolio([], {}), isLivePrices: false, dataSource: 'backend' as const }
         }
+
+        // Refresh backend-stored prices before reading values, so
+        // CalculatePortfolioValue uses current data. Interim until the backend
+        // gets its own price refresh scheduler; failure must not break the page.
+        await fetchExternalPrices([]).catch((error) => {
+          console.warn('Backend price refresh failed:', error)
+          return null
+        })
 
         // Fetch all data in parallel — holdings across ALL portfolios for dashboard overview
         const [holdings, accounts, assets, beValues, priceResult] = await Promise.all([

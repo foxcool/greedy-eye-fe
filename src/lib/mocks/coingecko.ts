@@ -47,13 +47,20 @@ export async function fetchPrices(): Promise<Record<string, { price: number; cha
 
   const data: CoinGeckoPrice[] = await response.json()
 
-  // Transform to our format
+  // Transform to our format.
+  // Key by CoinGecko id (mock holdings) and by uppercase symbol as fallback —
+  // backend holdings carry UUID asset ids, so they match prices via symbol.
   const prices: Record<string, { price: number; change24h: number }> = {}
-  
+
   for (const coin of data) {
-    prices[coin.id] = {
+    const entry = {
       price: coin.current_price,
       change24h: coin.price_change_percentage_24h ?? 0,
+    }
+    prices[coin.id] = entry
+    const symbolKey = coin.symbol.toUpperCase()
+    if (!(symbolKey in prices)) {
+      prices[symbolKey] = entry
     }
   }
 

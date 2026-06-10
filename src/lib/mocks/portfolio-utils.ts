@@ -41,7 +41,11 @@ export function calculatePortfolio(
   const portfolioHoldings: PortfolioHolding[] = holdings
     .map((holding) => {
       const quantity = holding.sources.reduce((sum, s) => sum + s.amount, 0)
-      const priceData = prices[holding.assetId] || { price: 0, change24h: 0 }
+      // assetId match covers mock holdings (CoinGecko ids); symbol fallback
+      // covers backend holdings whose assetId is a UUID.
+      const priceData =
+        prices[holding.assetId] ||
+        prices[holding.symbol.toUpperCase()] || { price: 0, change24h: 0 }
       const value = quantity * priceData.price
 
       return {

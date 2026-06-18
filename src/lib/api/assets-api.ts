@@ -75,3 +75,41 @@ export async function fetchExternalPrices(assetIds: string[]): Promise<{
 }> {
   return apiClient.post(RPC('FetchExternalPrices'), { assetIds })
 }
+
+export interface ListPriceHistoryOptions {
+  from?: string // ISO datetime
+  to?: string // ISO datetime
+  sourceId?: string
+  pageSize?: number
+}
+
+// Stored price history for one asset, oldest-to-newest as returned by the backend.
+// Follows nextPageToken to gather the full requested range.
+export async function listPriceHistory(
+  assetId: string,
+  baseAssetId = 'usd',
+  opts: ListPriceHistoryOptions = {}
+): Promise<StoredPrice[]> {
+  const all: StoredPrice[] = []
+  let pageToken: string | undefined
+  for (let page = 0; page < 50; page++) {
+    const body: Record<string, unknown> = {
+      assetId,
+      baseAssetId,
+      pageSize: opts.pageSize ?? 500,
+    }
+    if (opts.from) body['from'] = opts.from
+    if (opts.to) body['to'] = opts.to
+    if (opts.sourceId) body['sourceId'] = opts.sourceId
+    if (pageToken) body['pageToken'] = pageToken
+
+    const res = await apiClient.post<{ prices?: StoredPrice[]; nextPageToken?: string }>(
+      RPC('ListPriceHistory'),
+      body
+    )
+    all.push(...(res.prices ?? []))
+    if (!res.nextPageToken) break
+    pageToken = res.nextPageToken
+  }
+  return all
+}

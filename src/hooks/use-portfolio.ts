@@ -19,6 +19,7 @@ import { listPortfolios, listHoldings, listAccounts, calculatePortfolioValue } f
 import { listAssets, fetchExternalPrices } from '@/lib/api/assets-api'
 import { buildRawHoldings } from '@/lib/api/adapters'
 import { holdingToDecimal } from '@/lib/api/backend-types'
+import { usePortfolioScope } from '@/lib/portfolio-scope'
 
 // Data source configuration
 const USE_LIVE_PRICES = process.env.NEXT_PUBLIC_USE_LIVE_PRICES !== 'false'
@@ -29,8 +30,11 @@ interface PortfolioQueryResult extends PortfolioSummary {
 }
 
 export function usePortfolio() {
+  // When set, scope all derived data to a single portfolio; otherwise aggregate.
+  const { portfolioId } = usePortfolioScope()
+
   return useQuery<PortfolioQueryResult>({
-    queryKey: ['portfolio', 'summary', { live: USE_LIVE_PRICES, backend: USE_BACKEND_API }],
+    queryKey: ['portfolio', 'summary', { live: USE_LIVE_PRICES, backend: USE_BACKEND_API, portfolioId }],
     queryFn: async () => {
       if (USE_BACKEND_API) {
         // Fetch holdings data from backend
@@ -49,12 +53,17 @@ export function usePortfolio() {
           return null
         })
 
-        // Fetch all data in parallel — holdings across ALL portfolios for dashboard overview
+        // When scoped, value just the one portfolio; otherwise sum across all.
+        const valuedPortfolios = portfolioId
+          ? portfolios.filter(p => p.id === portfolioId)
+          : portfolios
+
+        // Fetch all data in parallel. listHoldings is scoped by portfolioId when set.
         const [holdings, accounts, assets, beValues, priceResult] = await Promise.all([
-          listHoldings({}), // no portfolioId filter — aggregate all
+          listHoldings(portfolioId ? { portfolioId } : {}),
           listAccounts(),
           listAssets(),
-          Promise.all(portfolios.map(p => calculatePortfolioValue(p.id, 'usd').catch(() => null))),
+          Promise.all(valuedPortfolios.map(p => calculatePortfolioValue(p.id, 'usd').catch(() => null))),
           USE_LIVE_PRICES ? fetchPricesWithFallback(mockPrices) : Promise.resolve({ prices: mockPrices, isLive: false }),
         ])
 

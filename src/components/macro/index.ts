@@ -1,0 +1,6 @@
+export { MacroDashboard } from './macro-dashboard'
+export { WidgetCard, changeColor } from './widget-card'
+export { InterestRatesWidget } from './interest-rates-widget'
+export { MarketsWidget } from './markets-widget'
+export { CryptoOverviewWidget } from './crypto-overview-widget'
+export { NewsWidget } from './news-widget'

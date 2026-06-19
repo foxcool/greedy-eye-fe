@@ -1,7 +1,6 @@
-'use client'
+import { redirect } from 'next/navigation'
 
-import { AccountList } from './components/account-list'
-
+// Accounts now live under Settings; keep the old URL working.
 export default function AccountsPage() {
-  return <AccountList />
+  redirect('/settings')
 }

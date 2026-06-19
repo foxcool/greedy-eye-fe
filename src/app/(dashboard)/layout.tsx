@@ -40,8 +40,8 @@ const NAV_LINKS = [
   { href: '/', label: 'Dashboard' },
   { href: '/portfolios', label: 'Portfolios' },
   { href: '/prices', label: 'Prices' },
-  { href: '/accounts', label: 'Accounts' },
   { href: '/assets', label: 'Assets' },
+  { href: '/settings', label: 'Settings' },
 ]
 
 function Sidebar() {

@@ -14,11 +14,29 @@ import {
 import { HoldingsManager } from './components/holdings-manager'
 import { PortfolioSettings } from './components/portfolio-settings'
 import { PortfolioScopeProvider } from '@/lib/portfolio-scope'
-import { getPortfolio, calculatePortfolioValue } from '@/lib/api/portfolio-api'
-import { holdingToDecimal } from '@/lib/api/backend-types'
+import { usePortfolio } from '@/hooks/use-portfolio'
+import { getPortfolio } from '@/lib/api/portfolio-api'
 
 interface PageProps {
   params: Promise<{ id: string }>
+}
+
+// Header total, sourced from the same client calculation as the summary card,
+// holdings table, and chart — so every total on the page agrees.
+function ScopedTotalValue() {
+  const { data: portfolio, isLoading, isFetching } = usePortfolio()
+  const total = portfolio?.totalValue
+  return (
+    <div className="text-right">
+      <p className="text-xs text-muted-foreground mb-0.5">Total value</p>
+      {/* Dim while a background refetch is in flight so a stale value is obvious. */}
+      <p className={`text-2xl font-bold tabular-nums transition-opacity ${isFetching ? 'opacity-50' : ''}`}>
+        {isLoading || total === undefined
+          ? '…'
+          : `$${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+      </p>
+    </div>
+  )
 }
 
 export default function PortfolioDetailPage({ params }: PageProps) {
@@ -28,17 +46,6 @@ export default function PortfolioDetailPage({ params }: PageProps) {
     queryKey: ['portfolios', id],
     queryFn: () => getPortfolio(id),
   })
-
-  const { data: portfolioValue } = useQuery({
-    queryKey: ['portfolios', id, 'value'],
-    queryFn: () => calculatePortfolioValue(id, 'usd'),
-    enabled: !!portfolio,
-    staleTime: 60_000,
-  })
-
-  const totalValue = portfolioValue?.totalValueAmount
-    ? holdingToDecimal(portfolioValue.totalValueAmount, portfolioValue.decimals)
-    : null
 
   if (isLoading) {
     return <p className="text-muted-foreground">Loading…</p>
@@ -70,19 +77,7 @@ export default function PortfolioDetailPage({ params }: PageProps) {
               )}
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-muted-foreground mb-0.5">Total value</p>
-            <p className="text-2xl font-bold tabular-nums">
-              {totalValue === null
-                ? '—'
-                : totalValue === 0
-                  ? '$0'
-                  : `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            </p>
-            {totalValue === 0 && (
-              <p className="text-xs text-muted-foreground">No price data</p>
-            )}
-          </div>
+          <ScopedTotalValue />
         </div>
 
         <Tabs defaultValue="overview">

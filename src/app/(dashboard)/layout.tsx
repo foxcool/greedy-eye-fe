@@ -39,6 +39,7 @@ function Header() {
 const NAV_LINKS = [
   { href: '/', label: 'Dashboard' },
   { href: '/portfolios', label: 'Portfolios' },
+  { href: '/rules', label: 'Rules' },
   { href: '/prices', label: 'Prices' },
   { href: '/assets', label: 'Assets' },
   { href: '/settings', label: 'Settings' },

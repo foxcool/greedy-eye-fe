@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { PortfolioForm } from '../../components/portfolio-form'
+import { TargetAllocationEditor } from './target-allocation-editor'
 import { useUpdatePortfolio, useDeletePortfolio } from '@/hooks/use-portfolios'
 import type { Portfolio } from '@/lib/api/backend-types'
 
@@ -34,6 +35,16 @@ export function PortfolioSettings({ portfolio }: { portfolio: Portfolio }) {
         <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
           Edit details
         </Button>
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <h3 className="text-sm font-medium text-foreground">Target allocation</h3>
+          <p className="text-sm text-muted-foreground">
+            Set target proportions per asset. The remainder is held in USD.
+          </p>
+        </div>
+        <TargetAllocationEditor portfolioId={portfolio.id} />
       </section>
 
       <section className="space-y-3">

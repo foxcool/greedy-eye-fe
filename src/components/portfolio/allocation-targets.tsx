@@ -19,12 +19,17 @@ export function AllocationTargets({
     return <AllocationSkeleton />
   }
 
-  if (error || !allocations) {
+  if (error) {
     return (
       <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
         <p className="text-destructive">Failed to load allocation targets</p>
       </div>
     )
+  }
+
+  // No targets configured for this portfolio — hide the block entirely.
+  if (!allocations || allocations.length === 0) {
+    return null
   }
 
   const filtered = showOnlyDeviations

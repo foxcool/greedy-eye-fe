@@ -86,7 +86,7 @@ export function calculatePortfolio(
         targetPercentage: targetPct,
         currentPercentage: Math.round(currentPct),
         diff: Math.round(diff),
-        diffValue: Math.round(diffValue / 100) * 100, // round to nearest 100
+        diffValue: Math.round(diffValue), // whole dollars
       }
     })
     .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff)) // sort by largest deviation

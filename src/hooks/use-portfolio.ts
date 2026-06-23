@@ -20,6 +20,7 @@ import { listAssets, fetchExternalPrices } from '@/lib/api/assets-api'
 import { buildRawHoldings } from '@/lib/api/adapters'
 import { holdingToDecimal } from '@/lib/api/backend-types'
 import { usePortfolioScope } from '@/lib/portfolio-scope'
+import { listRules, readTargets, TARGET_ALLOCATION_RULE_TYPE } from '@/lib/api/automation-api'
 
 // Data source configuration
 const USE_LIVE_PRICES = process.env.NEXT_PUBLIC_USE_LIVE_PRICES !== 'false'
@@ -59,18 +60,24 @@ export function usePortfolio() {
           : portfolios
 
         // Fetch all data in parallel. listHoldings is scoped by portfolioId when set.
-        const [holdings, accounts, assets, beValues, priceResult] = await Promise.all([
+        // Target allocations are per-portfolio, so only fetch the rule when scoped.
+        const [holdings, accounts, assets, beValues, priceResult, rules] = await Promise.all([
           listHoldings(portfolioId ? { portfolioId } : {}),
           listAccounts(),
           listAssets(),
           Promise.all(valuedPortfolios.map(p => calculatePortfolioValue(p.id, 'usd').catch(() => null))),
           USE_LIVE_PRICES ? fetchPricesWithFallback(mockPrices) : Promise.resolve({ prices: mockPrices, isLive: false }),
+          portfolioId ? listRules({ portfolioId }).catch(() => []) : Promise.resolve([]),
         ])
 
         const rawHoldings = buildRawHoldings(holdings, accounts, assets)
+        // Targets come from the portfolio's target_allocation rule (keyed by backend
+        // asset UUID, matching holdings). Empty when unscoped or no rule set → no
+        // allocations are produced and the target UI hides itself.
+        const targets = readTargets(rules.find((r) => r.ruleType === TARGET_ALLOCATION_RULE_TYPE))
         // Holdings without a price (no CoinGecko match) are dropped from the
         // dashboard — they would render as zero-value noise rows.
-        const portfolio = calculatePortfolio(rawHoldings, priceResult.prices)
+        const portfolio = calculatePortfolio(rawHoldings, priceResult.prices, targets)
 
         // Sum backend-calculated portfolio values (uses stored prices, COALESCE for portfolio_id).
         const beTotal = beValues.reduce((sum, v) => {
@@ -149,10 +156,17 @@ export function useHoldings(
     return direction === 'desc' ? -comparison : comparison
   })
 
+  // Per-asset target percentages (empty when the portfolio has no target rule).
+  const targetByAssetId: Record<string, number> = {}
+  portfolio?.allocations.forEach((a) => {
+    targetByAssetId[a.assetId] = a.targetPercentage
+  })
+
   return {
     data: holdings,
     totalValue: portfolio?.totalValue,
     isLivePrices: portfolio?.isLivePrices,
+    targetByAssetId,
     ...rest,
   }
 }

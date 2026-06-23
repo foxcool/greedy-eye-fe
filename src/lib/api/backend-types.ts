@@ -61,6 +61,29 @@ export interface Asset {
   updatedAt: string
 }
 
+export type RuleStatus =
+  | 'RULE_STATUS_UNKNOWN'
+  | 'RULE_STATUS_ACTIVE'
+  | 'RULE_STATUS_PAUSED'
+  | 'RULE_STATUS_DISABLED'
+  | 'RULE_STATUS_ERROR'
+
+// AutomationService rule. `configuration` is a free-form JSON object
+// (google.protobuf.Struct on the backend); for rule_type "target_allocation"
+// it holds { targets: { [assetId]: percentage } }.
+export interface Rule {
+  id: string
+  name: string
+  description?: string
+  ruleType: string
+  portfolioId: string
+  userId?: string
+  status?: RuleStatus
+  configuration?: Record<string, unknown>
+  createdAt?: string
+  updatedAt?: string
+}
+
 export interface StoredPrice {
   id: string
   sourceId: string

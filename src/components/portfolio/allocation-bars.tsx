@@ -2,7 +2,6 @@
 
 import { useHoldings } from '@/hooks/use-portfolio'
 import { formatCurrency } from '@/lib/mocks'
-import { targetPercentages } from '@/lib/mocks/portfolio-data'
 
 interface AllocationBarsProps {
   maxItems?: number
@@ -17,7 +16,10 @@ export function AllocationBars({
   groupSmall = true,
   smallThreshold = 1.5 
 }: AllocationBarsProps) {
-  const { data: holdings, totalValue, isLoading, error } = useHoldings('value', 'desc')
+  const { data: holdings, totalValue, targetByAssetId, isLoading, error } = useHoldings('value', 'desc')
+  // Only show target markers when the portfolio actually has targets configured.
+  const hasTargets = Object.keys(targetByAssetId).length > 0
+  const showTargets = showTarget && hasTargets
 
   if (isLoading) {
     return <BarsSkeleton count={8} />
@@ -64,7 +66,7 @@ export function AllocationBars({
 
   const maxPercentage = Math.max(
     ...displayItems.map(h => h.percentage),
-    ...displayItems.map(h => targetPercentages[h.assetId] || 0),
+    ...displayItems.map(h => targetByAssetId[h.assetId] || 0),
     otherValue / totalValue * 100
   )
 
@@ -72,7 +74,7 @@ export function AllocationBars({
     <div className="rounded-lg border border-border bg-card p-6">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-sm font-medium text-muted-foreground">Allocation</h3>
-        {showTarget && (
+        {showTargets && (
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-2 bg-blue-500 rounded-sm" />
@@ -93,7 +95,7 @@ export function AllocationBars({
             symbol={holding.symbol}
             value={holding.value}
             percentage={holding.percentage}
-            targetPercentage={showTarget ? targetPercentages[holding.assetId] : undefined}
+            targetPercentage={showTargets ? targetByAssetId[holding.assetId] : undefined}
             maxPercentage={maxPercentage}
             change24h={holding.change24h}
           />

@@ -21,7 +21,7 @@ Dashboard frontend for Greedy Eye portfolio management platform.
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20+ (CI builds on 22; Next.js 16 requires Node 20.9+)
 - Backend API running on http://localhost:8080
 
 ### Installation

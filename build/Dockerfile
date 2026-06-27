@@ -1,10 +1,13 @@
 # Production Dockerfile for greedy-eye-fe
 # Uses Next.js standalone output for minimal image size
 
+# Full install (incl. devDependencies): the build needs build-time tooling such
+# as @tailwindcss/postcss. The final runner stage uses Next.js standalone output,
+# so these dev dependencies never reach the production image.
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci
 
 FROM node:22-alpine AS builder
 WORKDIR /app

@@ -17,8 +17,9 @@
 /.next/
 /out/
 
-# production
-/build
+# production (ignore build artifacts but keep the deploy Dockerfile tracked)
+/build/*
+!/build/Dockerfile
 
 # misc
 .DS_Store

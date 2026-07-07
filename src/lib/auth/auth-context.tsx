@@ -14,6 +14,8 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   email: string | null;
+  // From psina Verify; role-gated UI only — the backend enforces the real check.
+  isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -25,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [email, setEmail] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -32,9 +35,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   useEffect(() => {
-    apiCheckAuth().then(({ authenticated, email: verifiedEmail }) => {
+    apiCheckAuth().then(({ authenticated, email: verifiedEmail, roles }) => {
       setIsAuthenticated(authenticated);
       setEmail(verifiedEmail);
+      setIsAdmin(roles.includes("admin"));
       setIsLoading(false);
     });
   }, []);
@@ -48,6 +52,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const body = await res.json().catch(() => ({}));
     setEmail((body as { email?: string }).email || userEmail);
     setIsAuthenticated(true);
+    // Roles come from Verify, not the login response.
+    apiCheckAuth().then(({ roles }) => setIsAdmin(roles.includes("admin")));
   }
 
   async function register(userEmail: string, password: string) {
@@ -65,10 +71,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await apiLogout();
     setIsAuthenticated(false);
     setEmail(null);
+    setIsAdmin(false);
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, email, login, register, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, email, isAdmin, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

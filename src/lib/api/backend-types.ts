@@ -7,6 +7,14 @@ export type AccountType =
   | 'ACCOUNT_TYPE_EXCHANGE'
   | 'ACCOUNT_TYPE_BANK'
   | 'ACCOUNT_TYPE_BROKER'
+  | 'ACCOUNT_TYPE_SERVICE'
+
+// Named operations account credentials allow (mirrors the backend capability matrix).
+export type AccountCapability =
+  | 'portfolio_sync'
+  | 'trading'
+  | 'market_data'
+  | 'onchain_lookup'
 
 export type AssetType =
   | 'ASSET_TYPE_UNSPECIFIED'
@@ -45,11 +53,20 @@ export interface Account {
   name: string
   description?: string
   type: AccountType
+  // Secret-looking keys (api_key, api_secret, *_token, ...) are write-only:
+  // responses carry a "••••"+last4 mask. Echoing a masked value back keeps
+  // the stored secret; a new value rotates it.
   data?: Record<string, string>
   portfolioId?: string
+  capabilities?: AccountCapability[]
+  // Admin-managed subset of capabilities shared system-wide.
+  systemScopes?: AccountCapability[]
   createdAt: string
   updatedAt: string
 }
+
+// Prefix the backend uses when masking write-only secret values.
+export const SECRET_MASK_PREFIX = '••••'
 
 export interface Asset {
   id: string

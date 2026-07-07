@@ -11,9 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { AccountForm } from './account-form'
-import { useAccounts, useCreateAccount, useUpdateAccount, useDeleteAccount } from '@/hooks/use-accounts'
+import { AccountForm, type AccountFormResult } from './account-form'
+import { useAccounts, useCreateAccount, useUpdateAccount, useUpdateSystemScopes, useDeleteAccount } from '@/hooks/use-accounts'
 import { usePortfolios } from '@/hooks/use-portfolios'
+import { useAuth } from '@/lib/auth/auth-context'
 import { syncAccount } from '@/lib/api/portfolio-api'
 import type { Account } from '@/lib/api/backend-types'
 
@@ -22,14 +23,45 @@ const TYPE_LABELS: Record<string, string> = {
   ACCOUNT_TYPE_EXCHANGE: 'Exchange',
   ACCOUNT_TYPE_BROKER: 'Broker',
   ACCOUNT_TYPE_BANK: 'Bank',
+  ACCOUNT_TYPE_SERVICE: 'Service',
+}
+
+const CAPABILITY_BADGES: Record<string, string> = {
+  portfolio_sync: 'sync',
+  trading: 'trading',
+  market_data: 'market data',
+  onchain_lookup: 'on-chain',
+}
+
+function scopesEqual(a: string[] = [], b: string[] = []): boolean {
+  return a.length === b.length && a.every((x) => b.includes(x))
 }
 
 export function AccountList() {
   const { data: accounts = [], isLoading, error } = useAccounts()
   const { data: portfolios = [] } = usePortfolios()
+  const { isAdmin } = useAuth()
   const create = useCreateAccount()
   const update = useUpdateAccount()
+  const updateScopes = useUpdateSystemScopes()
   const remove = useDeleteAccount()
+
+  function submitEdit(target: Account, values: AccountFormResult) {
+    const { systemScopes, ...fields } = values
+    update.mutate(
+      { id: target.id, ...fields },
+      {
+        onSuccess: () => {
+          // System scopes travel in their own admin-only RPC with an explicit
+          // update mask; only fire it when the toggles actually changed.
+          if (isAdmin && !scopesEqual(systemScopes, target.systemScopes)) {
+            updateScopes.mutate({ id: target.id, systemScopes })
+          }
+          setEditTarget(null)
+        },
+      }
+    )
+  }
 
   const portfolioById = Object.fromEntries(portfolios.map((p) => [p.id, p.name]))
 
@@ -69,6 +101,7 @@ export function AccountList() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead>Capabilities</TableHead>
               <TableHead>Portfolio</TableHead>
               <TableHead>Description</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -82,6 +115,28 @@ export function AccountList() {
                   <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-secondary text-secondary-foreground">
                     {TYPE_LABELS[a.type] ?? a.type}
                   </span>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {(a.capabilities ?? []).map((cap) => {
+                      const shared = a.systemScopes?.includes(cap)
+                      return (
+                        <span
+                          key={cap}
+                          title={shared ? 'Shared system-wide by an admin' : undefined}
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs ${
+                            shared
+                              ? 'bg-primary/15 text-primary'
+                              : 'bg-secondary text-secondary-foreground'
+                          }`}
+                        >
+                          {CAPABILITY_BADGES[cap] ?? cap}
+                          {shared && ' ⁂'}
+                        </span>
+                      )
+                    })}
+                    {(a.capabilities ?? []).length === 0 && <span className="text-muted-foreground">—</span>}
+                  </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {a.portfolioId ? portfolioById[a.portfolioId] ?? '—' : '—'}
@@ -134,13 +189,8 @@ export function AccountList() {
         open={editTarget !== null}
         onOpenChange={(open) => { if (!open) setEditTarget(null) }}
         initial={editTarget ?? undefined}
-        isLoading={update.isPending}
-        onSubmit={(values) =>
-          update.mutate(
-            { id: editTarget!.id, ...values },
-            { onSuccess: () => setEditTarget(null) }
-          )
-        }
+        isLoading={update.isPending || updateScopes.isPending}
+        onSubmit={(values) => submitEdit(editTarget!, values)}
       />
     </div>
   )

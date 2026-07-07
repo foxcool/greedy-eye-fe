@@ -40,11 +40,19 @@ export async function logout(): Promise<Response> {
 export interface AuthCheckResult {
   authenticated: boolean
   email: string | null
+  roles: string[]
+}
+
+const UNAUTHENTICATED: AuthCheckResult = { authenticated: false, email: null, roles: [] }
+
+interface VerifyBody {
+  email?: string
+  roles?: string[]
 }
 
 export async function checkAuth(): Promise<AuthCheckResult> {
   if (process.env.NEXT_PUBLIC_MOCK_USER_ID) {
-    return { authenticated: true, email: "demo@greedyeye.local" }
+    return { authenticated: true, email: "demo@greedyeye.local", roles: [] }
   }
 
   try {
@@ -55,17 +63,17 @@ export async function checkAuth(): Promise<AuthCheckResult> {
       credentials: "include",
     })
     if (res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { email?: string }
-      return { authenticated: true, email: body.email ?? null }
+      const body = (await res.json().catch(() => ({}))) as VerifyBody
+      return { authenticated: true, email: body.email ?? null, roles: body.roles ?? [] }
     }
     // Access token expired — attempt silent refresh via refresh cookie
     if (res.status === 401 && (await refreshToken())) {
       // Re-verify to pick up the email after the refresh
       return checkAuthOnce()
     }
-    return { authenticated: false, email: null }
+    return UNAUTHENTICATED
   } catch {
-    return { authenticated: false, email: null }
+    return UNAUTHENTICATED
   }
 }
 
@@ -78,11 +86,11 @@ async function checkAuthOnce(): Promise<AuthCheckResult> {
       body: "{}",
       credentials: "include",
     })
-    if (!res.ok) return { authenticated: false, email: null }
-    const body = (await res.json().catch(() => ({}))) as { email?: string }
-    return { authenticated: true, email: body.email ?? null }
+    if (!res.ok) return UNAUTHENTICATED
+    const body = (await res.json().catch(() => ({}))) as VerifyBody
+    return { authenticated: true, email: body.email ?? null, roles: body.roles ?? [] }
   } catch {
-    return { authenticated: false, email: null }
+    return UNAUTHENTICATED
   }
 }
 

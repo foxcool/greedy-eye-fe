@@ -119,6 +119,9 @@ export async function createAccount(input: {
   description?: string
   data?: Record<string, string>
   portfolioId?: string
+  capabilities?: Account['capabilities']
+  // Admin-only; the backend rejects it for non-admin users.
+  systemScopes?: Account['systemScopes']
 }): Promise<Account> {
   return apiClient.post<Account>(RPC('CreateAccount'), {
     account: {
@@ -127,16 +130,31 @@ export async function createAccount(input: {
       description: input.description,
       data: input.data,
       portfolioId: input.portfolioId || undefined,
+      capabilities: input.capabilities,
+      systemScopes: input.systemScopes,
     },
   })
 }
 
 export async function updateAccount(
   id: string,
-  input: Partial<Pick<Account, 'name' | 'description' | 'type' | 'data' | 'portfolioId'>>
+  input: Partial<Pick<Account, 'name' | 'description' | 'type' | 'data' | 'portfolioId' | 'capabilities'>>
 ): Promise<Account> {
   return apiClient.post<Account>(RPC('UpdateAccount'), {
     account: { id, ...input },
+  })
+}
+
+// System scopes are deliberately outside the default update mask on the
+// backend; mutating them needs an explicit mask (camelCase in Connect JSON)
+// and the admin role.
+export async function updateSystemScopes(
+  id: string,
+  systemScopes: Account['systemScopes']
+): Promise<Account> {
+  return apiClient.post<Account>(RPC('UpdateAccount'), {
+    account: { id, systemScopes },
+    updateMask: 'systemScopes',
   })
 }
 

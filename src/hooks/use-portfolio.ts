@@ -21,10 +21,15 @@ import { buildRawHoldings } from '@/lib/api/adapters'
 import { holdingToDecimal } from '@/lib/api/backend-types'
 import { usePortfolioScope } from '@/lib/portfolio-scope'
 import { listRules, readTargets, TARGET_ALLOCATION_RULE_TYPE } from '@/lib/api/automation-api'
+import { USE_BACKEND as USE_BACKEND_API, DEMO_MODE } from '@/lib/config/data-source'
 
 // Data source configuration
 const USE_LIVE_PRICES = process.env.NEXT_PUBLIC_USE_LIVE_PRICES !== 'false'
-const USE_BACKEND_API = process.env.NEXT_PUBLIC_USE_BACKEND === 'true'
+
+// Price fallback when CoinGecko is unavailable: mock prices are only
+// acceptable in demo mode; with a real backend an empty map (rows without a
+// price are dropped / valued at zero) beats convincingly fake numbers.
+const FALLBACK_PRICES = DEMO_MODE ? mockPrices : {}
 
 interface PortfolioQueryResult extends PortfolioSummary {
   isLivePrices: boolean
@@ -66,7 +71,7 @@ export function usePortfolio() {
           listAccounts(),
           listAssets(),
           Promise.all(valuedPortfolios.map(p => calculatePortfolioValue(p.id, 'usd').catch(() => null))),
-          USE_LIVE_PRICES ? fetchPricesWithFallback(mockPrices) : Promise.resolve({ prices: mockPrices, isLive: false }),
+          USE_LIVE_PRICES ? fetchPricesWithFallback(FALLBACK_PRICES) : Promise.resolve({ prices: FALLBACK_PRICES, isLive: false }),
           portfolioId ? listRules({ portfolioId }).catch(() => []) : Promise.resolve([]),
         ])
 

@@ -119,12 +119,11 @@ GREEDY_EYE_AUTH_TOKEN=psn_...   \
 
 ## Type generation
 
-Regenerate TypeScript types when the backend API contract changes:
-
-```bash
-npx swagger2openapi ../greedy-eye/docs/openapi.yaml -o src/lib/types/openapi-v3.yaml
-npx openapi-typescript src/lib/types/openapi-v3.yaml -o src/lib/types/api.ts
-```
+Backend types are hand-maintained in `src/lib/api/backend-types.ts` to match
+the backend `api/v1/*.proto` files (the source of truth). The backend serves
+Connect-RPC, which the OpenAPI generator does not support, so there is no
+OpenAPI spec to generate from — update `backend-types.ts` by hand when the
+proto contract changes.
 
 ## Troubleshooting
 

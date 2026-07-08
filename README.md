@@ -40,12 +40,11 @@ npm run dev
 
 ### Type Generation
 
-Generate TypeScript types from backend OpenAPI spec:
-
-```bash
-npx swagger2openapi ../greedy-eye/docs/openapi.yaml -o src/lib/types/openapi-v3.yaml
-npx openapi-typescript src/lib/types/openapi-v3.yaml -o src/lib/types/api.ts
-```
+Backend types live in `src/lib/api/backend-types.ts`, hand-maintained to
+match the backend `api/v1/*.proto` files (the source of truth). The backend
+serves Connect-RPC, which the OpenAPI generator does not cover, so there is
+no OpenAPI spec to generate from — mirror proto changes into `backend-types.ts`
+by hand.
 
 ## Project Structure
 

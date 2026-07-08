@@ -2,13 +2,19 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useIsFetching, useIsMutating } from '@tanstack/react-query'
 import { useAuth } from '@/lib/auth/auth-context'
 import { ProtectedRoute } from '@/lib/auth/protected-route'
+import { GreedyEyeLogo } from '@/components/brand/greedy-eye-logo'
 import { ThemeToggle } from '@/components/theme-toggle'
 
 function Header() {
   const { email, logout } = useAuth()
   const router = useRouter()
+  // The eye wanders while anything is happening in the background.
+  const isFetching = useIsFetching() > 0
+  const isMutating = useIsMutating() > 0
+  const busy = isFetching || isMutating
 
   async function handleLogout() {
     await logout()
@@ -18,7 +24,10 @@ function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card h-14">
       <div className="flex h-full items-center justify-between px-4">
-        <h1 className="text-xl font-semibold text-foreground">Greedy Eye</h1>
+        <div className="flex items-center gap-2.5">
+          <GreedyEyeLogo state={busy ? 'wander' : 'idle'} size={26} />
+          <h1 className="text-xl font-semibold text-foreground">Greedy Eye</h1>
+        </div>
         <div className="flex items-center gap-3">
           <ThemeToggle />
           {email && (

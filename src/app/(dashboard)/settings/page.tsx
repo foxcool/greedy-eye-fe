@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/lib/auth/auth-context'
 import { AccountList } from '../accounts/components/account-list'
+import { Appearance } from './components/appearance'
 import { PatList } from './components/pat-list'
 
 export default function SettingsPage() {
@@ -13,6 +14,8 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-bold text-foreground">Settings</h1>
         {email && <p className="text-sm text-muted-foreground">{email}</p>}
       </div>
+
+      <Appearance />
 
       <PatList />
 

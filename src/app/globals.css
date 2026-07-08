@@ -1,102 +1,49 @@
 @import "tailwindcss";
+@import "./tokens.css";
 
-/* 
- * Theme CSS variables
- * Using zinc palette for consistency with shadcn/ui
+/*
+ * Theme variables live in tokens.css:
+ * 2 styles (ledger | observatory) × 2 schemes (light | dark),
+ * selected via html[data-style="…"] + .dark class (next-themes).
+ * All values are raw colors (hex/rgba) — no hsl() wrapping.
  */
 
-:root {
-  /* Light theme */
-  --background: 0 0% 100%;           /* white */
-  --foreground: 240 10% 3.9%;        /* zinc-950 */
-  
-  --card: 0 0% 100%;
-  --card-foreground: 240 10% 3.9%;
-  
-  --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
-  
-  --primary: 240 5.9% 10%;           /* zinc-900 */
-  --primary-foreground: 0 0% 98%;    /* zinc-50 */
-  
-  --secondary: 240 4.8% 95.9%;       /* zinc-100 */
-  --secondary-foreground: 240 5.9% 10%;
-  
-  --muted: 240 4.8% 95.9%;           /* zinc-100 */
-  --muted-foreground: 240 3.8% 46.1%; /* zinc-500 */
-  
-  --accent: 240 4.8% 95.9%;
-  --accent-foreground: 240 5.9% 10%;
-  
-  --destructive: 0 84.2% 60.2%;      /* red-500 */
-  --destructive-foreground: 0 0% 98%;
-  
-  --border: 240 5.9% 90%;            /* zinc-200 */
-  --input: 240 5.9% 90%;
-  --ring: 240 5.9% 10%;
-  
-  --radius: 0.5rem;
-  
-  /* Chart colors */
-  --chart-positive: 142 76% 36%;     /* green-600 */
-  --chart-negative: 0 84% 60%;       /* red-500 */
-  --chart-neutral: 240 3.8% 46%;     /* zinc-500 */
-}
-
-.dark {
-  --background: 240 10% 3.9%;        /* zinc-950 */
-  --foreground: 0 0% 98%;            /* zinc-50 */
-  
-  --card: 240 10% 3.9%;              /* zinc-950 */
-  --card-foreground: 0 0% 98%;
-  
-  --popover: 240 10% 3.9%;
-  --popover-foreground: 0 0% 98%;
-  
-  --primary: 0 0% 98%;               /* zinc-50 */
-  --primary-foreground: 240 5.9% 10%;
-  
-  --secondary: 240 3.7% 15.9%;       /* zinc-800 */
-  --secondary-foreground: 0 0% 98%;
-  
-  --muted: 240 3.7% 15.9%;           /* zinc-800 */
-  --muted-foreground: 240 5% 64.9%;  /* zinc-400 */
-  
-  --accent: 240 3.7% 15.9%;
-  --accent-foreground: 0 0% 98%;
-  
-  --destructive: 0 62.8% 30.6%;      /* red-900 */
-  --destructive-foreground: 0 0% 98%;
-  
-  --border: 240 3.7% 15.9%;          /* zinc-800 */
-  --input: 240 3.7% 15.9%;
-  --ring: 240 4.9% 83.9%;            /* zinc-300 */
-  
-  /* Chart colors - brighter for dark mode */
-  --chart-positive: 142 71% 45%;     /* green-500 */
-  --chart-negative: 0 84% 60%;       /* red-500 */
-  --chart-neutral: 240 5% 65%;       /* zinc-400 */
-}
-
 @theme inline {
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
-  --color-destructive: hsl(var(--destructive));
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-faint: var(--faint);
+  --color-ge-up: var(--ge-up);
+  --color-ge-down: var(--ge-down);
+  --color-ge-attention: var(--ge-attention);
+  --color-ge-attention-bg: var(--ge-attention-bg);
+  --color-ge-drift-over: var(--ge-drift-over);
+  --color-ge-drift-under: var(--ge-drift-under);
+  --color-ge-heat-up-bg: var(--ge-heat-up-bg);
+  --color-ge-heat-down-bg: var(--ge-heat-down-bg);
+  --color-ge-heat-flat-bg: var(--ge-heat-flat-bg);
+  /* Chart colors: market semantics — gains/losses follow --ge-up/down */
+  --color-chart-positive: var(--ge-up);
+  --color-chart-negative: var(--ge-down);
+  --color-chart-neutral: var(--muted-foreground);
+  --font-sans: var(--ge-font-sans);
+  --font-mono: var(--ge-font-mono);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -104,9 +51,15 @@
 }
 
 body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-family: var(--font-sans), system-ui, sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--ge-font-sans);
+}
+
+/* All numbers align in columns: tables, sums, percentages, confidence */
+.tabular-nums,
+table {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Smooth theme transitions - scoped to avoid performance issues */

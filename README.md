@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo.svg" width="128" alt="Greedy Eye logo"></p>
+
 # Greedy Eye Frontend
 
 Dashboard frontend for Greedy Eye portfolio management platform.

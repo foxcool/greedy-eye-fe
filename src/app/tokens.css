@@ -1,0 +1,181 @@
+/* ============================================================
+   Greedy Eye — design tokens
+   2 styles (ledger | observatory) × 2 schemes (light | dark)
+   Wiring: html[data-style="…"] attribute + .dark class (next-themes).
+   Maps onto shadcn/ui variables + ge-specific extras.
+   Source of truth: design-system note (vault) — keep in sync.
+   ============================================================ */
+
+:root {
+  --radius: 10px;
+}
+
+/* ---------- LEDGER · light ---------- */
+html[data-style="ledger"] {
+  --ge-font-sans: var(--font-ibm-plex-sans), system-ui, sans-serif;
+  --ge-font-mono: var(--font-ibm-plex-mono), ui-monospace, monospace;
+
+  --background: #FAF7F1;
+  --foreground: #16130E;
+  --card: #FFFFFF;
+  --card-foreground: #16130E;
+  --popover: #FFFFFF;
+  --popover-foreground: #16130E;
+  --border: #E3DCCE;
+  --input: #D9D2C5;
+  --muted: #EFE9DC;
+  --muted-foreground: #71685C;
+  --secondary: #EFE9DC;
+  --secondary-foreground: #16130E;
+  --accent: #EFE9DC;
+  --accent-foreground: #16130E;
+  --destructive: #C4453C;
+  --destructive-foreground: #FAF7F1;
+  --faint: #B0A794;            /* tertiary text, ge extra */
+  --primary: #16130E;          /* primary button = ink */
+  --primary-foreground: #FAF7F1;
+  --ring: #C75B12;
+
+  --ge-attention: #C75B12;     /* attention/badge/accent */
+  --ge-attention-bg: rgba(199, 91, 18, .10);
+  --ge-up: #1E8F5A;
+  --ge-down: #C4453C;
+  --ge-drift-over: #C75B12;
+  --ge-drift-under: #16130E;
+  --ge-heat-up-bg: #DCEEDD;    /* heatmap tile, gain */
+  --ge-heat-down-bg: #F6DDD8;  /* heatmap tile, loss */
+  --ge-heat-flat-bg: #EFEAE0;
+}
+
+/* ---------- LEDGER · dark ---------- */
+html[data-style="ledger"].dark {
+  --background: #0B0D10;
+  --foreground: #E8EAED;
+  --card: #12151A;
+  --card-foreground: #E8EAED;
+  --popover: #12151A;
+  --popover-foreground: #E8EAED;
+  --border: rgba(255, 255, 255, .07);
+  --input: rgba(255, 255, 255, .12);
+  --muted: #1C2026;
+  --muted-foreground: #9AA3AD;
+  --secondary: #1C2026;
+  --secondary-foreground: #E8EAED;
+  --accent: #1C2026;
+  --accent-foreground: #E8EAED;
+  --destructive: #F0616D;
+  --destructive-foreground: #0B0D10;
+  --faint: #5A6472;
+  --primary: #E8EAED;
+  --primary-foreground: #0B0D10;
+  --ring: #E5A83B;
+
+  --ge-attention: #E5A83B;
+  --ge-attention-bg: rgba(229, 168, 59, .12);
+  --ge-up: #4ADE80;
+  --ge-down: #F0616D;
+  --ge-drift-over: #E5A83B;
+  --ge-drift-under: #6FA8F5;
+  --ge-heat-up-bg: #16321F;
+  --ge-heat-down-bg: #3A1A1E;
+  --ge-heat-flat-bg: #1C2026;
+}
+
+/* ---------- OBSERVATORY · light ---------- */
+html[data-style="observatory"] {
+  --ge-font-sans: var(--font-space-grotesk), system-ui, sans-serif;
+  --ge-font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  --background: #F3F5F7;
+  --foreground: #141B24;
+  --card: #FBFCFD;
+  --card-foreground: #141B24;
+  --popover: #FBFCFD;
+  --popover-foreground: #141B24;
+  --border: #D8DEE4;
+  --input: #C3CBD3;
+  --muted: #E8ECF0;
+  --muted-foreground: #66707B;
+  --secondary: #E8ECF0;
+  --secondary-foreground: #141B24;
+  --accent: #E8ECF0;
+  --accent-foreground: #141B24;
+  --destructive: #C4453C;
+  --destructive-foreground: #FFFFFF;
+  --faint: #99A2AC;
+  --primary: #0E8B94;          /* teal — primary button/active nav */
+  --primary-foreground: #FFFFFF;
+  --ring: #0E8B94;
+
+  --ge-attention: #B97F16;
+  --ge-attention-bg: rgba(185, 127, 22, .10);
+  --ge-up: #1E8F5A;
+  --ge-down: #C4453C;
+  --ge-drift-over: #B97F16;
+  --ge-drift-under: #0E8B94;
+  --ge-heat-up-bg: #DFF0E2;
+  --ge-heat-down-bg: #F8E0DD;
+  --ge-heat-flat-bg: #FFFFFF;
+}
+
+/* ---------- OBSERVATORY · dark ---------- */
+html[data-style="observatory"].dark {
+  --background: #070B12;
+  --foreground: #DFE6EE;
+  --card: rgba(255, 255, 255, .03);
+  --card-foreground: #DFE6EE;
+  --popover: #0D1420;
+  --popover-foreground: #DFE6EE;
+  --border: rgba(120, 190, 210, .14);
+  --input: rgba(255, 255, 255, .10);
+  --muted: rgba(255, 255, 255, .06);
+  --muted-foreground: #7B8794;
+  --secondary: rgba(255, 255, 255, .06);
+  --secondary-foreground: #DFE6EE;
+  --accent: rgba(255, 255, 255, .06);
+  --accent-foreground: #DFE6EE;
+  --destructive: #F0616D;
+  --destructive-foreground: #070B12;
+  --faint: #5A6472;
+  --primary: #37C0C9;
+  --primary-foreground: #070B12;
+  --ring: #37C0C9;
+
+  --ge-attention: #F5B03E;
+  --ge-attention-bg: rgba(245, 176, 62, .06);
+  --ge-up: #4ADE80;
+  --ge-down: #F0616D;
+  --ge-drift-over: #F5B03E;
+  --ge-drift-under: #37C0C9;
+  --ge-heat-up-bg: rgba(74, 222, 128, .14);
+  --ge-heat-down-bg: rgba(240, 97, 109, .12);
+  --ge-heat-flat-bg: rgba(255, 255, 255, .04);
+}
+
+/* ============================================================
+   Logo: the living eye. Only two motions:
+   wander — background activity (fetch/sync), dilate — attention item.
+   No blinking.
+   ============================================================ */
+
+@keyframes ge-wander {
+  0%, 14%   { transform: translate(-38%, 7%); }
+  24%, 38%  { transform: translate(30%, -13%); }
+  48%, 60%  { transform: translate(7%, 17%); }
+  70%, 84%  { transform: translate(-17%, -10%); }
+  100%      { transform: translate(-38%, 7%); }
+}
+
+@keyframes ge-dilate {
+  0%, 100% { transform: scale(1); }
+  18%, 72% { transform: scale(1.55); }
+}
+
+@keyframes ge-glowpulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(0, 0, 0, 0); }
+  30%      { box-shadow: 0 0 26px var(--ge-attention); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ge-eye-pupil, .ge-eye { animation: none !important; }
+}

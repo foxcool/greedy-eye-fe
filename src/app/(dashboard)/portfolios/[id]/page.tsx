@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   PortfolioSummaryCard,
-  AllocationChart,
+  PortfolioHeatmap,
   AllocationTargets,
   HoldingsTable,
 } from '@/components/portfolio'
@@ -90,7 +90,7 @@ export default function PortfolioDetailPage({ params }: PageProps) {
           <TabsContent value="overview" className="space-y-6 pt-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <PortfolioSummaryCard />
-              <AllocationChart />
+              <PortfolioHeatmap />
             </div>
             <AllocationTargets />
             <div>

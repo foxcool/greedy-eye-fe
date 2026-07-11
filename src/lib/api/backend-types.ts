@@ -127,6 +127,29 @@ export interface PortfolioValueResponse {
   calculationTime: string
 }
 
+// --- Analytics (heatmap) ---
+
+export type HeatmapGroupBy = 'HEATMAP_GROUP_BY_UNSPECIFIED' | 'HEATMAP_GROUP_BY_ACCOUNT'
+export type HeatmapWindow = 'HEATMAP_WINDOW_24H' | 'HEATMAP_WINDOW_7D' | 'HEATMAP_WINDOW_30D'
+
+// One treemap tile (leaf) or group (parent). Proto3 JSON omits zero values,
+// so numeric fields may be absent.
+export interface HeatmapNode {
+  id: string
+  label?: string
+  parentId?: string
+  size?: number
+  colorValue?: number
+  price?: number
+  assetId?: string
+}
+
+export interface GetHeatmapResponse {
+  nodes?: HeatmapNode[]
+  quoteAssetId: string
+  calculatedAt?: string
+}
+
 // Converts int64 holding amount string to decimal number.
 // e.g. holdingToDecimal("1140000", 8) → 0.0114
 export function holdingToDecimal(amount: string | undefined | null, decimals: number): number {

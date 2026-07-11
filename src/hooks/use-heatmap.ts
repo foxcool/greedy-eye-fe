@@ -1,0 +1,69 @@
+/**
+ * Portfolio heatmap data hook.
+ *
+ * Backend mode: AnalyticsService.GetHeatmap (tile size = holding value,
+ * color = price change % over the window).
+ * Demo mode: nodes are derived from the mock portfolio summary with a
+ * deterministic fake change per symbol — fake numbers stay demo-only.
+ */
+
+import { useQuery } from '@tanstack/react-query'
+import { getPortfolioHeatmap } from '@/lib/api/analytics-api'
+import type { GetHeatmapResponse, HeatmapGroupBy, HeatmapWindow } from '@/lib/api/backend-types'
+import { USE_BACKEND, DEMO_MODE } from '@/lib/config/data-source'
+import { usePortfolioScope } from '@/lib/portfolio-scope'
+import { usePortfolio } from './use-portfolio'
+
+export interface HeatmapOptions {
+  groupBy?: HeatmapGroupBy
+  window?: HeatmapWindow
+}
+
+// Deterministic pseudo change % in (-6, +6) so demo tiles are stable across reloads.
+function demoChange(symbol: string, window: string): number {
+  let hash = 0
+  for (const ch of symbol + window) {
+    hash = (hash * 31 + ch.charCodeAt(0)) | 0
+  }
+  return ((hash % 1200) / 100) - 6
+}
+
+export interface HeatmapResult {
+  data?: GetHeatmapResponse
+  isLoading: boolean
+  error: Error | null
+}
+
+export function usePortfolioHeatmap(options: HeatmapOptions = {}): HeatmapResult {
+  const { portfolioId } = usePortfolioScope()
+  const { groupBy, window = 'HEATMAP_WINDOW_24H' } = options
+
+  // Demo source: reuse the already-cached mock portfolio summary.
+  const demoSummary = usePortfolio()
+
+  const backendQuery = useQuery<GetHeatmapResponse>({
+    queryKey: ['heatmap', 'portfolio', portfolioId, groupBy, window],
+    queryFn: () => getPortfolioHeatmap(portfolioId!, { groupBy, window }),
+    enabled: USE_BACKEND && !!portfolioId,
+    staleTime: 60 * 1000,
+  })
+
+  if (!DEMO_MODE) {
+    return { data: backendQuery.data, isLoading: backendQuery.isLoading, error: backendQuery.error }
+  }
+
+  const holdings = demoSummary.data?.holdings ?? []
+  const demoData: GetHeatmapResponse = {
+    quoteAssetId: 'USD',
+    nodes: holdings
+      .filter(h => h.value > 0)
+      .map(h => ({
+        id: h.assetId,
+        label: h.symbol,
+        size: h.value,
+        colorValue: demoChange(h.symbol, window),
+        assetId: h.assetId,
+      })),
+  }
+  return { data: demoData, isLoading: demoSummary.isLoading, error: demoSummary.error }
+}

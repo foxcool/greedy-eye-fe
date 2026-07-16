@@ -144,7 +144,7 @@ export function AccountList() {
                 <TableCell className="text-muted-foreground">{a.description ?? '—'}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
-                    {a.type === 'ACCOUNT_TYPE_WALLET' && (
+                    {(a.type === 'ACCOUNT_TYPE_WALLET' || a.type === 'ACCOUNT_TYPE_EXCHANGE') && (
                       <Button
                         variant="outline"
                         size="sm"

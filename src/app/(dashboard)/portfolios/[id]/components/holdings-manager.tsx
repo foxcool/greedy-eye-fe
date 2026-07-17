@@ -11,7 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { HoldingForm } from './holding-form'
-import { useHoldingsQuery, useCreateHolding, useUpdateHolding } from '@/hooks/use-holdings'
+import { useHoldingsQuery, useCreateHolding, useUpdateHolding, useDeleteHolding } from '@/hooks/use-holdings'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useAssets } from '@/hooks/use-assets'
 import { holdingToDecimal } from '@/lib/api/backend-types'
@@ -26,6 +26,7 @@ const ACCOUNT_TYPE_LABEL: Record<string, string> = {
   ACCOUNT_TYPE_EXCHANGE: 'Exchange',
   ACCOUNT_TYPE_BROKER: 'Broker',
   ACCOUNT_TYPE_BANK: 'Bank',
+  ACCOUNT_TYPE_MANUAL: 'Manual',
 }
 
 function AccountGroup({
@@ -34,6 +35,7 @@ function AccountGroup({
   assetMap,
   onExclude,
   onEdit,
+  onDelete,
   isPending,
 }: {
   account: Account
@@ -41,6 +43,7 @@ function AccountGroup({
   assetMap: Map<string, { symbol?: string; name: string }>
   onExclude: (h: Holding) => void
   onEdit: (h: Holding) => void
+  onDelete: (h: Holding) => void
   isPending: boolean
 }) {
   const included = holdings.filter((h) => !h.excluded)
@@ -90,6 +93,9 @@ function AccountGroup({
                   {h.excluded && (
                     <span className="ml-2 text-[10px] uppercase tracking-wide text-destructive font-semibold">excluded</span>
                   )}
+                  {h.source === 'PROVENANCE_SOURCE_MANUAL' && (
+                    <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">manual</span>
+                  )}
                 </TableCell>
                 <TableCell className="text-right tabular-nums text-sm">
                   {amount.toLocaleString('en-US', { maximumFractionDigits: 8 })}
@@ -106,6 +112,15 @@ function AccountGroup({
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => onEdit(h)}>
                       Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => onDelete(h)}
+                      disabled={isPending}
+                    >
+                      Delete
                     </Button>
                   </div>
                 </TableCell>
@@ -124,6 +139,7 @@ export function HoldingsManager({ portfolioId }: HoldingsManagerProps) {
   const { data: assets = [], isLoading: assetsLoading } = useAssets()
   const create = useCreateHolding()
   const update = useUpdateHolding()
+  const remove = useDeleteHolding()
 
   const [addOpen, setAddOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Holding | null>(null)
@@ -166,9 +182,15 @@ export function HoldingsManager({ portfolioId }: HoldingsManagerProps) {
               account={account}
               holdings={groupHoldings}
               assetMap={assetMap}
-              isPending={update.isPending}
+              isPending={update.isPending || remove.isPending}
               onExclude={(h) => update.mutate({ id: h.id, excluded: !h.excluded })}
               onEdit={(h) => setEditTarget(h)}
+              onDelete={(h) => {
+                const asset = assetMap.get(h.assetId)
+                if (window.confirm(`Delete ${asset?.symbol ?? 'this'} holding? This cannot be undone.`)) {
+                  remove.mutate(h.id)
+                }
+              }}
             />
           ))}
           {orphaned.length > 0 && (

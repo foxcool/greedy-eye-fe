@@ -104,6 +104,10 @@ export async function updateHolding(
   })
 }
 
+export async function deleteHolding(id: string): Promise<void> {
+  await apiClient.post(RPC('DeleteHolding'), { id })
+}
+
 // --- Accounts ---
 
 export async function listAccounts(): Promise<Account[]> {

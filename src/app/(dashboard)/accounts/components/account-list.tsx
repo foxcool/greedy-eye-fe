@@ -24,6 +24,7 @@ const TYPE_LABELS: Record<string, string> = {
   ACCOUNT_TYPE_BROKER: 'Broker',
   ACCOUNT_TYPE_BANK: 'Bank',
   ACCOUNT_TYPE_SERVICE: 'Service',
+  ACCOUNT_TYPE_MANUAL: 'Manual',
 }
 
 const CAPABILITY_BADGES: Record<string, string> = {
@@ -31,6 +32,7 @@ const CAPABILITY_BADGES: Record<string, string> = {
   trading: 'trading',
   market_data: 'market data',
   onchain_lookup: 'on-chain',
+  manual_positions: 'manual',
 }
 
 function scopesEqual(a: string[] = [], b: string[] = []): boolean {

@@ -8,6 +8,7 @@ export type AccountType =
   | 'ACCOUNT_TYPE_BANK'
   | 'ACCOUNT_TYPE_BROKER'
   | 'ACCOUNT_TYPE_SERVICE'
+  | 'ACCOUNT_TYPE_MANUAL'
 
 // Named operations account credentials allow (mirrors the backend capability matrix).
 export type AccountCapability =
@@ -15,6 +16,14 @@ export type AccountCapability =
   | 'trading'
   | 'market_data'
   | 'onchain_lookup'
+  | 'manual_positions'
+
+// How a holding or transaction entered the system. Server-stamped at creation.
+export type ProvenanceSource =
+  | 'PROVENANCE_SOURCE_UNSPECIFIED'
+  | 'PROVENANCE_SOURCE_SYNC'
+  | 'PROVENANCE_SOURCE_MANUAL'
+  | 'PROVENANCE_SOURCE_LLM_IMPORT'
 
 export type AssetType =
   | 'ASSET_TYPE_UNSPECIFIED'
@@ -43,6 +52,9 @@ export interface Holding {
   accountId: string
   portfolioId?: string
   excluded?: boolean
+  // Output-only provenance; stamped by the server on create.
+  source?: ProvenanceSource
+  importId?: string
   createdAt: string
   updatedAt: string
 }

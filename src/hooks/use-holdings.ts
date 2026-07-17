@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createHolding,
+  deleteHolding,
   listHoldings,
   updateHolding,
   type ListHoldingsOptions,
@@ -27,6 +28,14 @@ export function useUpdateHolding() {
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string } & Parameters<typeof updateHolding>[1]) =>
       updateHolding(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['holdings'] }),
+  })
+}
+
+export function useDeleteHolding() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => deleteHolding(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['holdings'] }),
   })
 }

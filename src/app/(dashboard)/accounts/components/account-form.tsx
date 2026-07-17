@@ -31,6 +31,7 @@ const ACCOUNT_TYPES: { value: AccountType; label: string; hint: string }[] = [
   { value: 'ACCOUNT_TYPE_BROKER', label: 'Broker', hint: 'Stock broker (Interactive Brokers, etc.)' },
   { value: 'ACCOUNT_TYPE_BANK', label: 'Bank', hint: 'Bank account' },
   { value: 'ACCOUNT_TYPE_SERVICE', label: 'Service', hint: 'Data-provider API key (Moralis, CoinGecko, etc.)' },
+  { value: 'ACCOUNT_TYPE_MANUAL', label: 'Manual', hint: 'Positions entered by hand or imported — no connector' },
 ]
 
 // Mirrors the backend capability matrix (entity.ValidateCapabilities) —
@@ -41,6 +42,7 @@ const ALLOWED_CAPABILITIES: Record<string, AccountCapability[]> = {
   ACCOUNT_TYPE_BROKER: ['portfolio_sync', 'trading', 'market_data'],
   ACCOUNT_TYPE_BANK: ['portfolio_sync'],
   ACCOUNT_TYPE_SERVICE: ['market_data', 'onchain_lookup'],
+  ACCOUNT_TYPE_MANUAL: ['manual_positions'],
 }
 
 // Capabilities an admin may share system-wide (user-agnostic results only).
@@ -51,6 +53,7 @@ const CAPABILITY_LABELS: Record<AccountCapability, string> = {
   trading: 'Trading',
   market_data: 'Market data',
   onchain_lookup: 'On-chain lookup',
+  manual_positions: 'Manual positions',
 }
 
 // Account types whose credentials are a provider API key pair.
@@ -64,6 +67,7 @@ const schema = z.object({
     'ACCOUNT_TYPE_BROKER',
     'ACCOUNT_TYPE_BANK',
     'ACCOUNT_TYPE_SERVICE',
+    'ACCOUNT_TYPE_MANUAL',
   ] as const),
   description: z.string().max(300).optional(),
   portfolioId: z.string().optional(),
@@ -72,9 +76,9 @@ const schema = z.object({
   provider: z.string().max(50).optional(),
   apiKey: z.string().max(500).optional(),
   apiSecret: z.string().max(500).optional(),
-  capabilities: z.array(z.enum(['portfolio_sync', 'trading', 'market_data', 'onchain_lookup'] as const)),
+  capabilities: z.array(z.enum(['portfolio_sync', 'trading', 'market_data', 'onchain_lookup', 'manual_positions'] as const)),
   // Constrained to SYSTEM_SCOPEABLE by the UI; typed wide to match Account.
-  systemScopes: z.array(z.enum(['portfolio_sync', 'trading', 'market_data', 'onchain_lookup'] as const)),
+  systemScopes: z.array(z.enum(['portfolio_sync', 'trading', 'market_data', 'onchain_lookup', 'manual_positions'] as const)),
 }).superRefine((values, ctx) => {
   if (values.type === 'ACCOUNT_TYPE_WALLET' && !values.address) {
     ctx.addIssue({ code: 'custom', path: ['address'], message: 'Address is required for wallet accounts' })
@@ -148,7 +152,11 @@ export function AccountForm({ open, onOpenChange, onSubmit, isLoading, initial }
     setValue('type', type)
     // Prune selections the new type doesn't allow.
     const allowed = ALLOWED_CAPABILITIES[type] ?? []
-    const caps = capabilities.filter((c) => allowed.includes(c))
+    let caps = capabilities.filter((c) => allowed.includes(c))
+    // Manual accounts have exactly one capability — pre-select it.
+    if (type === 'ACCOUNT_TYPE_MANUAL') {
+      caps = ['manual_positions']
+    }
     setValue('capabilities', caps)
     setValue('systemScopes', systemScopes.filter((s) => caps.includes(s)))
   }

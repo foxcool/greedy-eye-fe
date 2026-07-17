@@ -68,11 +68,18 @@ export interface Account {
 // Prefix the backend uses when masking write-only secret values.
 export const SECRET_MASK_PREFIX = '••••'
 
+// Asset identity is the composite (symbol, market, type): the same ticker may
+// exist on different markets (AAPL on nasdaq vs an AAPL token on crypto).
 export interface Asset {
   id: string
   name: string
   type: AssetType
   symbol?: string
+  // Listing market/venue ("crypto" is the single global crypto market,
+  // "nasdaq", "moex"), not the price source.
+  market?: string
+  // Quote currency/base where applicable.
+  quote?: string
   tags: string[]
   createdAt: string
   updatedAt: string

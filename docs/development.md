@@ -29,8 +29,7 @@ npm run dev          # http://localhost:3000
 | Var | Meaning |
 |-----|---------|
 | `NEXT_PUBLIC_API_URL` | Backend base URL (`http://localhost:8080`); empty = relative (behind Traefik) |
-| `NEXT_PUBLIC_USE_BACKEND` | `true` to use the backend; `false` for mock-only data |
-| `NEXT_PUBLIC_USE_LIVE_PRICES` | `true` to fetch CoinGecko prices client-side |
+| `NEXT_PUBLIC_USE_BACKEND` | `true` to use the backend (prices come from backend-stored data); `false` for mock-only demo |
 | `NEXT_PUBLIC_MOCK_USER_ID` | Injects `X-User-Id` for direct access (no psina) |
 
 ### B. Docker dev (via Traefik)

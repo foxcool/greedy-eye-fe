@@ -2,7 +2,7 @@
 
 import { usePortfolio } from '@/hooks/use-portfolio'
 import { formatCurrency, formatPercentage } from '@/lib/mocks'
-import { Database, Wifi, WifiOff } from 'lucide-react'
+import { Database, WifiOff } from 'lucide-react'
 
 export function PortfolioSummaryCard() {
   const { data: portfolio, isLoading, error, isFetching } = usePortfolio()
@@ -53,19 +53,14 @@ export function PortfolioSummaryCard() {
             <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" aria-hidden="true" />
           )}
           {portfolio.dataSource === 'backend' ? (
-            <div className="flex items-center gap-1 text-xs text-blue-500" title="Value calculated by backend">
+            <div className="flex items-center gap-1 text-xs text-blue-500" title="Holdings and prices from backend">
               <Database size={14} aria-hidden="true" />
               <span>Backend</span>
             </div>
-          ) : portfolio.isLivePrices ? (
-            <div className="flex items-center gap-1 text-xs text-green-500" title="Live prices from CoinGecko">
-              <Wifi size={14} aria-hidden="true" />
-              <span>Live</span>
-            </div>
           ) : (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Using cached/mock prices">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Demo data (mock prices)">
               <WifiOff size={14} aria-hidden="true" />
-              <span>Offline</span>
+              <span>Demo</span>
             </div>
           )}
         </div>

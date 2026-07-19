@@ -39,7 +39,7 @@ export function PricesView() {
         <h1 className="text-2xl font-bold text-foreground">Prices</h1>
         {priceResult && (
           <span className="text-xs text-muted-foreground">
-            {priceResult.isLive ? 'Live · CoinGecko' : 'Offline · cached'}
+            {priceResult.isLive ? 'Backend · stored prices' : 'Demo · mock prices'}
           </span>
         )}
       </div>

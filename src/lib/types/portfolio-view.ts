@@ -39,7 +39,7 @@ export interface PortfolioSummary {
   lastUpdated: Date
   isLivePrices?: boolean          // true if prices from live API
   portfolioId?: string            // backend portfolio ID if connected
-  dataSource?: 'backend' | 'coingecko' | 'mock'
+  dataSource?: 'backend' | 'mock'
 }
 
 // For charts (index signature required for Recharts compatibility)

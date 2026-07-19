@@ -6,4 +6,3 @@ export {
   formatPercentage,
   formatQuantity 
 } from './portfolio-utils'
-export { fetchPrices, fetchPricesWithFallback } from './coingecko'

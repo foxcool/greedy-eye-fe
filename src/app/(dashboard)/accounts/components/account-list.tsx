@@ -48,6 +48,29 @@ export function AccountList() {
   const updateScopes = useUpdateSystemScopes()
   const remove = useDeleteAccount()
 
+  // Deleting is two-stage on purpose. The first attempt leaves positions
+  // alone; only if the backend refuses because they exist do we name how many
+  // and ask again with cascade. Transaction history is never deletable this
+  // way, so that refusal is passed through as-is.
+  function handleDelete(account: Account) {
+    if (!window.confirm(`Delete account "${account.name}"? This cannot be undone.`)) return
+
+    remove.mutate(
+      { id: account.id },
+      {
+        onError: (error) => {
+          const message = error instanceof Error ? error.message : ''
+          const positions = message.match(/holds (\d+) position/)
+          if (!positions) return // not about positions — the global toast reports it
+
+          if (window.confirm(`"${account.name}" holds ${positions[1]} position(s). Delete them too?`)) {
+            remove.mutate({ id: account.id, cascade: true })
+          }
+        },
+      }
+    )
+  }
+
   function submitEdit(target: Account, values: AccountFormResult) {
     const { systemScopes, ...fields } = values
     update.mutate(
@@ -165,7 +188,7 @@ export function AccountList() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => remove.mutate(a.id)}
+                      onClick={() => handleDelete(a)}
                       disabled={remove.isPending}
                     >
                       Delete

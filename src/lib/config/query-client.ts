@@ -1,4 +1,5 @@
-import { QueryClient } from '@tanstack/react-query'
+import { MutationCache, QueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 
 export const queryClientConfig = {
   defaultOptions: {
@@ -18,6 +19,18 @@ export const queryClientConfig = {
   },
 }
 
+// Mutations are user-initiated writes, so a failure has to be visible. Without
+// this the UI silently does nothing and the action reads as a dead button —
+// which is exactly how a rejected account deletion presented. Reporting here
+// covers every mutation at once, including ones added later; a mutation may
+// still declare its own onError, and both run.
+function reportMutationError(error: unknown) {
+  toast.error(error instanceof Error ? error.message : 'Request failed')
+}
+
 export function makeQueryClient() {
-  return new QueryClient(queryClientConfig)
+  return new QueryClient({
+    ...queryClientConfig,
+    mutationCache: new MutationCache({ onError: reportMutationError }),
+  })
 }

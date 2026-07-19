@@ -42,7 +42,11 @@ export function useUpdateSystemScopes() {
 export function useDeleteAccount() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => deleteAccount(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['accounts'] }),
+    mutationFn: ({ id, cascade }: { id: string; cascade?: boolean }) => deleteAccount(id, cascade),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['accounts'] })
+      // Cascade removes positions, so anything showing holdings is now stale.
+      qc.invalidateQueries({ queryKey: ['holdings'] })
+    },
   })
 }

@@ -162,8 +162,10 @@ export async function updateSystemScopes(
   })
 }
 
-export async function deleteAccount(id: string): Promise<void> {
-  await apiClient.post(RPC('DeleteAccount'), { id })
+// cascade also removes the account's positions. Transaction history is never
+// removed this way — the backend refuses the request instead.
+export async function deleteAccount(id: string, cascade = false): Promise<void> {
+  await apiClient.post(RPC('DeleteAccount'), { id, cascade })
 }
 
 export interface SyncAccountResponse {

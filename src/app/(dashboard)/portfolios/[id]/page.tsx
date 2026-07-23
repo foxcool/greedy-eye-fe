@@ -88,10 +88,8 @@ export default function PortfolioDetailPage({ params }: PageProps) {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6 pt-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <PortfolioSummaryCard />
-              <PortfolioHeatmap />
-            </div>
+            <PortfolioSummaryCard />
+            <PortfolioHeatmap />
             <AllocationTargets />
             <div>
               <h2 className="text-lg font-medium text-foreground mb-4">Holdings</h2>

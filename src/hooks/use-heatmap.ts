@@ -1,14 +1,17 @@
 /**
- * Portfolio heatmap data hook.
+ * Portfolio / balance heatmap data hooks.
  *
  * Backend mode: AnalyticsService.GetHeatmap (tile size = holding value,
- * color = price change % over the window).
+ * color = price change % over the window). PORTFOLIO scopes to one portfolio,
+ * BALANCE spans all the caller's holdings across portfolios.
  * Demo mode: nodes are derived from the mock portfolio summary with a
- * deterministic fake change per symbol — fake numbers stay demo-only.
+ * deterministic fake change per symbol — fake numbers stay demo-only. The
+ * demo has no real accounts/portfolios, so both hooks render the same flat
+ * aggregate and grouping is a no-op (the card hides its group toggles).
  */
 
 import { useQuery } from '@tanstack/react-query'
-import { getPortfolioHeatmap } from '@/lib/api/analytics-api'
+import { getPortfolioHeatmap, getBalanceHeatmap } from '@/lib/api/analytics-api'
 import type { GetHeatmapResponse, HeatmapGroupBy, HeatmapWindow } from '@/lib/api/backend-types'
 import { USE_BACKEND, DEMO_MODE } from '@/lib/config/data-source'
 import { usePortfolioScope } from '@/lib/portfolio-scope'
@@ -34,26 +37,11 @@ export interface HeatmapResult {
   error: Error | null
 }
 
-export function usePortfolioHeatmap(options: HeatmapOptions = {}): HeatmapResult {
-  const { portfolioId } = usePortfolioScope()
-  const { groupBy, window = 'HEATMAP_WINDOW_24H' } = options
-
-  // Demo source: reuse the already-cached mock portfolio summary.
-  const demoSummary = usePortfolio()
-
-  const backendQuery = useQuery<GetHeatmapResponse>({
-    queryKey: ['heatmap', 'portfolio', portfolioId, groupBy, window],
-    queryFn: () => getPortfolioHeatmap(portfolioId!, { groupBy, window }),
-    enabled: USE_BACKEND && !!portfolioId,
-    staleTime: 60 * 1000,
-  })
-
-  if (!DEMO_MODE) {
-    return { data: backendQuery.data, isLoading: backendQuery.isLoading, error: backendQuery.error }
-  }
-
-  const holdings = demoSummary.data?.holdings ?? []
-  const demoData: GetHeatmapResponse = {
+// Builds a flat demo heatmap from the (already cached) mock portfolio summary.
+function useDemoHeatmap(window: HeatmapWindow): HeatmapResult {
+  const summary = usePortfolio()
+  const holdings = summary.data?.holdings ?? []
+  const data: GetHeatmapResponse = {
     quoteAssetId: 'USD',
     nodes: holdings
       .filter(h => h.value > 0)
@@ -65,5 +53,42 @@ export function usePortfolioHeatmap(options: HeatmapOptions = {}): HeatmapResult
         assetId: h.assetId,
       })),
   }
-  return { data: demoData, isLoading: demoSummary.isLoading, error: demoSummary.error }
+  return { data, isLoading: summary.isLoading, error: summary.error }
+}
+
+export function usePortfolioHeatmap(options: HeatmapOptions = {}): HeatmapResult {
+  const { portfolioId } = usePortfolioScope()
+  const { groupBy, window = 'HEATMAP_WINDOW_24H' } = options
+
+  const backendQuery = useQuery<GetHeatmapResponse>({
+    queryKey: ['heatmap', 'portfolio', portfolioId, groupBy, window],
+    queryFn: () => getPortfolioHeatmap(portfolioId!, { groupBy, window }),
+    enabled: USE_BACKEND && !!portfolioId,
+    staleTime: 60 * 1000,
+  })
+
+  const demo = useDemoHeatmap(window)
+  if (!DEMO_MODE) {
+    return { data: backendQuery.data, isLoading: backendQuery.isLoading, error: backendQuery.error }
+  }
+  return demo
+}
+
+// All holdings across every portfolio (portfolios list page).
+export function useBalanceHeatmap(options: HeatmapOptions = {}): HeatmapResult {
+  const { groupBy, window = 'HEATMAP_WINDOW_24H' } = options
+
+  const backendQuery = useQuery<GetHeatmapResponse>({
+    queryKey: ['heatmap', 'balance', groupBy, window],
+    queryFn: () => getBalanceHeatmap({ groupBy, window }),
+    enabled: USE_BACKEND,
+    staleTime: 60 * 1000,
+  })
+
+  // Unscoped usePortfolio() already aggregates across portfolios in demo mode.
+  const demo = useDemoHeatmap(window)
+  if (!DEMO_MODE) {
+    return { data: backendQuery.data, isLoading: backendQuery.isLoading, error: backendQuery.error }
+  }
+  return demo
 }

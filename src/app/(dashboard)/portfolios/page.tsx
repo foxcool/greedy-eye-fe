@@ -5,6 +5,7 @@ import {
   HoldingsTable,
   AllocationBars,
 } from '@/components/portfolio'
+import { BalanceHeatmap } from '@/components/heatmap/balance-heatmap'
 import { PortfolioList } from './components/portfolio-list'
 
 export default function PortfoliosPage() {
@@ -17,14 +18,17 @@ export default function PortfoliosPage() {
           <PortfolioSummaryCard />
           <AllocationBars maxItems={10} showTarget={true} />
         </div>
-        <div>
-          <h2 className="text-lg font-medium text-foreground mb-4">Holdings</h2>
-          <HoldingsTable />
-        </div>
+        {/* Performance map of every holding, across all portfolios */}
+        <BalanceHeatmap />
       </section>
 
-      {/* Portfolio list */}
+      {/* Portfolio list sits above the flat holdings table */}
       <PortfolioList />
+
+      <div>
+        <h2 className="text-lg font-medium text-foreground mb-4">Holdings</h2>
+        <HoldingsTable />
+      </div>
     </div>
   )
 }

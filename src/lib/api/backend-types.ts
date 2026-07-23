@@ -166,7 +166,10 @@ export interface PortfolioValueResponse {
 
 // --- Analytics (heatmap) ---
 
-export type HeatmapGroupBy = 'HEATMAP_GROUP_BY_UNSPECIFIED' | 'HEATMAP_GROUP_BY_ACCOUNT'
+export type HeatmapGroupBy =
+  | 'HEATMAP_GROUP_BY_UNSPECIFIED'
+  | 'HEATMAP_GROUP_BY_ACCOUNT'
+  | 'HEATMAP_GROUP_BY_PORTFOLIO'
 export type HeatmapWindow = 'HEATMAP_WINDOW_24H' | 'HEATMAP_WINDOW_7D' | 'HEATMAP_WINDOW_30D'
 
 // One treemap tile (leaf) or group (parent). Proto3 JSON omits zero values,

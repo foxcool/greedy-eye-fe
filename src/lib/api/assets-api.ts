@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { Asset, StoredPrice } from './backend-types'
+import type { Asset, IdentityVerdict, StoredPrice } from './backend-types'
 
 const RPC = (method: string) => `/eye.v1.MarketDataService/${method}`
 
@@ -9,6 +9,8 @@ export interface ListAssetsOptions {
   tags?: string[]
   pageSize?: number
   pageToken?: string
+  // Filter by scam-filtering identity verdict; drives the Quarantine view.
+  identityVerdict?: IdentityVerdict
 }
 
 // Backend pages default to 20 rows — follow nextPageToken to fetch everything.
@@ -18,6 +20,7 @@ export async function listAssets(opts: ListAssetsOptions = {}): Promise<Asset[]>
   for (let page = 0; page < 50; page++) {
     const body: Record<string, unknown> = { pageSize: opts.pageSize ?? 500 }
     if (opts.tags?.length) body['tags'] = opts.tags
+    if (opts.identityVerdict) body['identityVerdict'] = opts.identityVerdict
     if (pageToken) body['pageToken'] = pageToken
 
     const res = await apiClient.post<{ assets?: Asset[]; nextPageToken?: string }>(
@@ -29,6 +32,15 @@ export async function listAssets(opts: ListAssetsOptions = {}): Promise<Asset[]>
     pageToken = res.nextPageToken
   }
   return all
+}
+
+// setAssetVerdict records a human identity verdict; it is terminal — the
+// automated scorer never overwrites it. Admin-only on the backend.
+export async function setAssetVerdict(
+  assetId: string,
+  verdict: Exclude<IdentityVerdict, 'unknown'>
+): Promise<Asset> {
+  return apiClient.post<Asset>(RPC('SetAssetVerdict'), { assetId, verdict })
 }
 
 export async function createAsset(data: {

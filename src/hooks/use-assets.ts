@@ -3,10 +3,11 @@ import {
   createAsset,
   deleteAsset,
   listAssets,
+  setAssetVerdict,
   updateAsset,
   type ListAssetsOptions,
 } from '@/lib/api/assets-api'
-import type { Asset } from '@/lib/api/backend-types'
+import type { Asset, IdentityVerdict } from '@/lib/api/backend-types'
 
 export function useAssets(opts?: ListAssetsOptions) {
   return useQuery({
@@ -39,6 +40,20 @@ export function useDeleteAsset() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => deleteAsset(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['assets'] }),
+  })
+}
+
+export function useSetAssetVerdict() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      verdict,
+    }: {
+      id: string
+      verdict: Exclude<IdentityVerdict, 'unknown'>
+    }) => setAssetVerdict(id, verdict),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['assets'] }),
   })
 }

@@ -80,6 +80,16 @@ export interface Account {
 // Prefix the backend uses when masking write-only secret values.
 export const SECRET_MASK_PREFIX = '••••'
 
+// Identity verdict (scam-filtering): whether an asset is what it claims to be.
+// A permanent property, distinct from a real asset's situational risk and from a
+// user's per-holding excluded decision.
+export type IdentityVerdict =
+  | 'unknown'
+  | 'legit'
+  | 'suspect'
+  | 'scam'
+  | 'impersonation'
+
 // Asset identity is the composite (symbol, market, type): the same ticker may
 // exist on different markets (AAPL on nasdaq vs an AAPL token on crypto).
 export interface Asset {
@@ -93,6 +103,10 @@ export interface Asset {
   // Quote currency/base where applicable.
   quote?: string
   tags: string[]
+  // Scam-filtering identity verdict; "unknown" until scored.
+  identityVerdict?: IdentityVerdict
+  // Verdict provenance: "heuristic" | "provider:<name>" | "curated" | "user:<id>".
+  verdictSource?: string
   createdAt: string
   updatedAt: string
 }
@@ -144,6 +158,10 @@ export interface PortfolioValueResponse {
   totalValueAmount: string
   decimals: number
   calculationTime: string
+  // Quarantined holdings kept out of the total but disclosed so the number never
+  // silently diverges from the wallet.
+  excludedCount?: number
+  excludedValueAmount?: string
 }
 
 // --- Analytics (heatmap) ---

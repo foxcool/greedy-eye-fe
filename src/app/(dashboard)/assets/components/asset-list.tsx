@@ -12,6 +12,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { AssetForm } from './asset-form'
+import { QuarantineSection } from './quarantine-section'
+import { VerdictBadge } from './verdict-badge'
 import { useAssets, useCreateAsset, useUpdateAsset, useDeleteAsset } from '@/hooks/use-assets'
 import { usePrices, coingeckoIdBySymbol } from '@/hooks/use-prices'
 import { formatCurrency } from '@/lib/mocks'
@@ -71,6 +73,8 @@ export function AssetList() {
         <Button onClick={() => setCreateOpen(true)}>Add Asset</Button>
       </div>
 
+      <QuarantineSection assets={assets} />
+
       <Input
         placeholder="Search by name, symbol, or ID…"
         value={search}
@@ -109,18 +113,21 @@ export function AssetList() {
               return (
               <TableRow key={a.id} title={a.id}>
                 <TableCell className="font-medium">
-                  {url ? (
-                    <a
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline decoration-dotted underline-offset-2 hover:text-primary"
-                    >
-                      {a.symbol ?? '—'}
-                    </a>
-                  ) : (
-                    a.symbol ?? '—'
-                  )}
+                  <div className="flex items-center gap-2">
+                    {url ? (
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline decoration-dotted underline-offset-2 hover:text-primary"
+                      >
+                        {a.symbol ?? '—'}
+                      </a>
+                    ) : (
+                      a.symbol ?? '—'
+                    )}
+                    <VerdictBadge verdict={a.identityVerdict} source={a.verdictSource} />
+                  </div>
                 </TableCell>
                 <TableCell>{a.name}</TableCell>
                 <TableCell className="text-muted-foreground text-sm">

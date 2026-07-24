@@ -17,9 +17,13 @@ COPY . .
 # Build args for compile-time env vars
 ARG NEXT_PUBLIC_API_URL=http://localhost:8080
 ARG NEXT_PUBLIC_AUTH_URL=http://localhost:8081
+# Data source mode. Default false = self-contained demo on mock data. Set true
+# so the build talks to the real backend (DEMO_MODE off, mock widgets hidden).
+ARG NEXT_PUBLIC_USE_BACKEND=false
 
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_AUTH_URL=${NEXT_PUBLIC_AUTH_URL}
+ENV NEXT_PUBLIC_USE_BACKEND=${NEXT_PUBLIC_USE_BACKEND}
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build

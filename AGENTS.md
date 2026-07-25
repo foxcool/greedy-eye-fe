@@ -32,14 +32,25 @@
 
 ## Dev Workflow
 
-```bash
-# Local dev (direct backend access, mock user):
-npm run dev           # → http://localhost:3000
+**Canonical local dev is `make up` (Docker + `deploy/compose.yaml`), not `npm run dev`.**
+The two modes differ in *auth*, which matters when debugging sessions:
 
-# Docker (via Traefik, real auth):
+```bash
+# Docker (canonical) — real psina auth via Traefik forwardAuth, cookie+JWT
+# refresh flow. Mock is disabled (compose sets NEXT_PUBLIC_MOCK_USER_ID="").
 make up                # deploy/compose.yaml on the shared `proxy` network
 # → https://${EYE_DOMAIN}/app
+
+# Bare npm — mock user: .env.local sets NEXT_PUBLIC_MOCK_USER_ID, so checkAuth
+# short-circuits and the client injects X-User-Id. Verify/Refresh never run —
+# do NOT use this to reproduce auth/session bugs.
+npm run dev           # → http://localhost:3000
 ```
+
+Note: `make up` runs `npm run dev` (Turbopack) with on-demand compilation, so
+requests serialize on first load — concurrency/timing races that need a burst
+of parallel requests (e.g. the refresh-rotation race) may only surface on the
+prebuilt prod image, not locally.
 
 See [docs/development.md](docs/development.md) for the full multi-service stack.
 

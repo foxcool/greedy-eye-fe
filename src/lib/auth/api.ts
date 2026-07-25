@@ -94,7 +94,26 @@ async function checkAuthOnce(): Promise<AuthCheckResult> {
   }
 }
 
-export async function refreshToken(): Promise<boolean> {
+// Single-flight guard for token refresh.
+//
+// Psina rotates refresh tokens: each successful Refresh revokes the presented
+// token and issues a new one, and re-presenting a revoked token trips reuse
+// detection, which revokes the whole token family and logs the user out. On
+// load the auth check and every data request can hit a 401 at once — without
+// coalescing, they would each POST /Refresh with the same cookie, so the first
+// rotates it and the rest replay the now-revoked token and kill the session.
+// Sharing one in-flight promise means exactly one rotation happens per burst.
+let inflightRefresh: Promise<boolean> | null = null
+
+export function refreshToken(): Promise<boolean> {
+  if (inflightRefresh) return inflightRefresh
+  inflightRefresh = doRefresh().finally(() => {
+    inflightRefresh = null
+  })
+  return inflightRefresh
+}
+
+async function doRefresh(): Promise<boolean> {
   try {
     // Psina reads refresh_token from psina_refresh cookie (body field empty → cookie fallback)
     const res = await fetch(`${AUTH_BASE}/Refresh`, {

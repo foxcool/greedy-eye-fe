@@ -47,6 +47,14 @@ make up                # deploy/compose.yaml on the shared `proxy` network
 npm run dev           # → http://localhost:3000
 ```
 
+Checks run inside the dev container (its `node_modules`), not on the host:
+
+```bash
+make lint             # ESLint
+make typecheck        # tsc --noEmit
+make check            # typecheck + lint + build — run before committing
+```
+
 Note: `make up` runs `npm run dev` (Turbopack) with on-demand compilation, so
 requests serialize on first load — concurrency/timing races that need a burst
 of parallel requests (e.g. the refresh-rotation race) may only surface on the

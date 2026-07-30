@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  PortfolioSummaryCard,
+  PortfolioValueHeader,
   HoldingsTable,
   AllocationBars,
 } from '@/components/portfolio'
@@ -11,15 +11,13 @@ import { PortfolioList } from './components/portfolio-list'
 export default function PortfoliosPage() {
   return (
     <div className="space-y-8">
-      {/* Aggregate overview across all portfolios */}
+      {/* Two full-width blocks: what it is worth, then how it is composed. */}
       <section className="space-y-6">
         <h1 className="text-2xl font-bold text-foreground">Portfolios overview</h1>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <PortfolioSummaryCard />
-          <AllocationBars maxItems={10} showTarget={true} />
-        </div>
-        {/* Performance map of every holding, across all portfolios */}
-        <BalanceHeatmap />
+        {/* The total and the map it describes share one card instead of leaving a
+            mostly empty half-row next to the allocation bars. */}
+        <BalanceHeatmap header={<PortfolioValueHeader />} />
+        <AllocationBars maxItems={10} showTarget={true} />
       </section>
 
       {/* Portfolio list sits above the flat holdings table */}

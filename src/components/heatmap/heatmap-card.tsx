@@ -68,6 +68,11 @@ function splitGroups(nodes: HeatmapNode[]): Group[] {
 export interface HeatmapCardProps {
   title: string
   useData: (opts: HeatmapOptions) => HeatmapResult
+  /**
+   * Replaces the plain title with a richer block (e.g. the portfolio total), so
+   * the value and the map it describes share one card instead of two.
+   */
+  header?: React.ReactNode
   /** Extra grouping dimensions offered beside "All" (hidden in demo mode). */
   groupOptions?: GroupOption[]
   /** Flat treemap height in px. */
@@ -78,6 +83,7 @@ export interface HeatmapCardProps {
 export function HeatmapCard({
   title,
   useData,
+  header,
   groupOptions = [],
   height = 384,
   onLeafClick,
@@ -93,29 +99,16 @@ export function HeatmapCard({
   const nodes = useMemo(() => data?.nodes ?? [], [data])
   const groups = useMemo(() => (activeGroupBy ? splitGroups(nodes) : []), [nodes, activeGroupBy])
 
-  if (isLoading) {
-    return (
-      <div className="rounded-lg border border-border bg-card p-6" style={{ height: height + 96 }}>
-        <div className="animate-pulse h-full rounded bg-muted" />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6">
-        <p className="text-destructive">Failed to load heatmap</p>
-      </div>
-    )
-  }
-
   const showGroups = groupOptions.length > 0 && !DEMO_MODE
 
+  // The chrome (header + toggles) renders in every state: with a header block in
+  // the card, an early return would drop the total out of the page while the map
+  // loads and shift everything below it.
   return (
-    <div className="rounded-lg border border-border bg-card p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
-        <div className="flex items-center gap-3">
+    <div className="rounded-lg border border-border bg-card p-6" aria-label={title}>
+      <div className="flex flex-col gap-4 mb-4 md:flex-row md:items-start md:justify-between">
+        {header ?? <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>}
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
           {showGroups && (
             <div className="flex items-center gap-1">
               <ToggleButton active={!groupBy} onClick={() => setGroupBy(undefined)}>
@@ -142,7 +135,13 @@ export function HeatmapCard({
         </div>
       </div>
 
-      {activeGroupBy && groups.length > 0 ? (
+      {isLoading ? (
+        <div className="animate-pulse rounded bg-muted" style={{ height }} />
+      ) : error ? (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6">
+          <p className="text-destructive">Failed to load heatmap</p>
+        </div>
+      ) : activeGroupBy && groups.length > 0 ? (
         <div className="space-y-4">
           {groups.map(group => (
             <div key={group.id}>

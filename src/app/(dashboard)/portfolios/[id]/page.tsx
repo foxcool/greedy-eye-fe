@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
-  PortfolioSummaryCard,
+  PortfolioValueHeader,
   PortfolioHeatmap,
   AllocationTargets,
   HoldingsTable,
@@ -88,8 +88,7 @@ export default function PortfolioDetailPage({ params }: PageProps) {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6 pt-4">
-            <PortfolioSummaryCard />
-            <PortfolioHeatmap />
+            <PortfolioHeatmap header={<PortfolioValueHeader />} />
             <AllocationTargets />
             <div>
               <h2 className="text-lg font-medium text-foreground mb-4">Holdings</h2>

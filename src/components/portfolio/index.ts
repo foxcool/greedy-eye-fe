@@ -1,4 +1,4 @@
-export { PortfolioSummaryCard } from './portfolio-summary-card'
+export { PortfolioValueHeader } from './portfolio-value-header'
 export { HoldingsTable } from './holdings-table'
 export { AllocationChart } from './allocation-chart'
 export { AllocationBars } from './allocation-bars'

@@ -57,8 +57,13 @@ const NAV_LINKS = [
 function Sidebar() {
   const pathname = usePathname()
   return (
-    <aside className="w-64 border-r border-border bg-card p-4">
-      <nav className="space-y-2" aria-label="Main navigation">
+    <aside className="w-64 shrink-0 border-r border-border bg-card">
+      {/* Pinned below the 3.5rem header: navigation that scrolls away is not
+          navigation. The rail itself stretches so the divider runs full height. */}
+      <nav
+        className="sticky top-14 max-h-[calc(100vh-3.5rem)] overflow-y-auto space-y-2 p-4"
+        aria-label="Main navigation"
+      >
         {NAV_LINKS.map(({ href, label }) => {
           const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href)
           return (

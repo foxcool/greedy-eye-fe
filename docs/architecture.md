@@ -1,10 +1,16 @@
-# Greedy Eye Frontend - Architecture Documentation
+# Greedy Eye Frontend — Architecture Documentation
 
 ## Overview
 
-Dashboard frontend for Greedy Eye portfolio management platform, built with Next.js and React.
+Dashboard frontend for the Greedy Eye portfolio platform: Next.js App Router on top
+of the Go backend's Connect-RPC API.
 
-Based on arc42 template, adapted for frontend architecture.
+Based on arc42, adapted for a frontend.
+
+> **Source of truth**: the code. This document is hand-maintained prose about
+> `src/` — when they disagree, the code wins. The backend contract lives in
+> `greedy-eye/api/v1/*.proto`; this repo mirrors it by hand in
+> `src/lib/api/backend-types.ts` (see ADR-6).
 
 ---
 
@@ -12,35 +18,41 @@ Based on arc42 template, adapted for frontend architecture.
 
 ### 1.1 Requirements
 
-**Functional Requirements:**
-- Display portfolio list with summary values
-- Show portfolio details with holdings breakdown
-- Real-time price updates for assets
-- Create, edit, delete portfolios and holdings
-- Asset allocation visualization (charts)
-- Rule management for automation
+**Functional:**
+- Show every position the user owns, in one currency, across portfolios and accounts
+- Portfolio detail: value, allocation, holdings, target allocations, settings
+- Asset catalog with the scam-filter verdict and a quarantine section
+- Account management: wallets, exchanges, manual accounts, provider credentials
+- Automation rules: list, lifecycle, manual portfolio actions
+- Prices and price history
+- Personal access tokens for external clients (MCP)
 
-**Non-functional Requirements:**
-- Time to Interactive < 2s
-- First Contentful Paint < 1.5s
-- Support modern browsers (Chrome, Firefox, Safari, Edge)
-- Desktop-first design (1920x1080 primary)
-- Dark theme by default
+**Non-functional:**
+- Desktop-first (1920×1080 primary); usable on a laptop screen
+- Two visual styles × light/dark, switchable at runtime
+- Runs without a backend at all (demo mode) for UI work and previews
+- Modern evergreen browsers only
 
 ### 1.2 Quality Goals
 
-| Priority | Goal | Metric |
-|----------|------|--------|
-| 1 | Performance | LCP < 2s, bundle < 500KB gzipped |
-| 2 | Usability | Intuitive navigation, minimal clicks |
-| 3 | Maintainability | Component reuse, clear structure |
+| Priority | Goal | How it is judged |
+|----------|------|------------------|
+| 1 | **Honesty of numbers** | The UI never presents a value more confidently than the backend does. Mock data never renders outside demo mode; excluded and unvalued positions must stay visible |
+| 2 | Usability | Few clicks to the number that matters; the sum is reachable from the first screen |
+| 3 | Performance | Fast first paint on a dashboard-sized payload |
+| 4 | Maintainability | Component reuse, one API layer, no hidden data sources |
+
+Goal 1 is not decoration. The backend can return a portfolio value that omits
+positions it could not price (`ValuationCoverage`) and holdings excluded by the
+scam filter. A frontend that renders only the headline number turns a partial
+answer into a confident lie.
 
 ### 1.3 Stakeholders
 
 | Role | Expectations |
 |------|--------------|
-| User | Fast, responsive dashboard for portfolio tracking |
-| Developer | Clear architecture, easy to extend |
+| User (single, self-hosted) | Fast, truthful dashboard for portfolio tracking |
+| Developer (one) | Clear structure, no codegen surprises, easy to extend |
 
 ---
 
@@ -48,20 +60,21 @@ Based on arc42 template, adapted for frontend architecture.
 
 ### 2.1 Technical Constraints
 
-- **Framework**: Next.js 16 with App Router
-- **Language**: TypeScript 5 (strict mode)
-- **Styling**: Tailwind CSS (no CSS-in-JS)
-- **Components**: shadcn/ui (copy-paste, not npm package)
-- **State**: TanStack Query for server state
-- **Backend**: Connect-RPC on :8080 (POST `/eye.v1.*`); auth via psina forwardAuth
+- **Framework**: Next.js 16, App Router, `output: "standalone"`, `basePath: "/app"`
+- **Runtime**: React 19; Node 20.9+ locally, CI builds on Node 22
+- **Language**: TypeScript 5 (strict)
+- **Styling**: Tailwind CSS v4 + CSS variables (no CSS-in-JS)
+- **Components**: shadcn/ui (copy-paste into `components/ui/`, not an npm dependency)
+- **Server state**: TanStack Query v5
+- **Backend**: Connect-RPC on the Go service — `POST /eye.v1.<Service>/<Method>`, JSON
+- **Auth**: psina, cookie flow behind Traefik `forwardAuth`; no user store here
 
 ### 2.2 Conventions
 
-- English only in code and documentation
-- Functional components (no class components)
-- Server Components by default
-- File naming: kebab-case
-- Component naming: PascalCase
+- English only in code, comments and docs
+- Functional components; `'use client'` where interactivity or hooks are needed
+- File naming kebab-case, components PascalCase
+- Money from the backend arrives as integer + `decimals` — convert once, in the API layer
 
 ---
 
@@ -70,33 +83,31 @@ Based on arc42 template, adapted for frontend architecture.
 ### 3.1 Context Diagram (C1)
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      User (Browser)                      │
-└─────────────────────────┬───────────────────────────────┘
-                          │ HTTPS
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│                  Greedy Eye Frontend                     │
-│                    (Next.js App)                         │
-└─────────────────────────┬───────────────────────────────┘
-                          │ HTTP/JSON
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│                  Greedy Eye Backend                      │
-│               (Go + Connect-RPC :8080)                   │
-└─────────────────────────────────────────────────────────┘
+                    ┌──────────────────┐
+                    │  User (Browser)  │
+                    └────────┬─────────┘
+                             │ HTTPS
+                    ┌────────▼─────────┐
+                    │     Traefik      │──forwardAuth──► psina /verify
+                    └────┬────────┬────┘   (200 + X-User-Id, X-User-Roles)
+              /app, /_next│        │/eye.v1.*, /auth.v1.*
+                    ┌─────▼────┐ ┌─▼──────────────────┐
+                    │  eye-fe  │ │ eye (Connect-RPC)  │
+                    │ Next.js  │ │ Go, h2c :8080      │
+                    └──────────┘ └────────────────────┘
 ```
 
-In Docker, requests pass through Traefik, which calls psina `/verify`
-(forwardAuth) and injects `X-User-Id` before reaching frontend/backend.
+The browser talks to the backend **directly** (relative URLs through the same
+Traefik host), not through a Next.js API route. There is no BFF layer: pages and
+client components call the backend from the browser with `credentials: 'include'`.
 
 ### 3.2 Technical Context
 
 | Interface | Protocol | Format |
 |-----------|----------|--------|
 | User ↔ Frontend | HTTPS | HTML/JS |
-| Frontend ↔ Backend | HTTP (h2c) | JSON (Connect-RPC) |
-| Frontend ↔ psina | HTTP | JSON (`/auth.v1.*`) |
+| Frontend ↔ Backend | HTTPS (h2c behind Traefik) | JSON over Connect-RPC, `POST /eye.v1.*` |
+| Frontend ↔ psina | HTTPS | JSON, `POST /auth.v1.AuthService/*` |
 
 ---
 
@@ -106,18 +117,24 @@ In Docker, requests pass through Traefik, which calls psina `/verify`
 
 | Decision | Rationale |
 |----------|-----------|
-| Next.js App Router | Server Components, built-in routing, SSR |
-| shadcn/ui | Full ownership, no vendor lock-in, Radix a11y |
-| TanStack Query | Superior caching, DevTools, polling support |
-| Polling (not WebSocket) | Backend doesn't support WS yet, simpler |
-| Desktop-first | Portfolio management is desktop activity |
+| Next.js App Router | Routing, layouts, standalone build; most pages are client components because the data is user-scoped and cookie-authenticated |
+| shadcn/ui | Full ownership of the primitives, Radix a11y, no vendor lock-in |
+| TanStack Query | Caching, invalidation, devtools; one place for retry/refetch policy |
+| Hand-written API layer | Connect-RPC over `fetch`; no generated client (ADR-4, ADR-6) |
+| Backend owns prices | The browser never calls a price provider (ADR-7) |
+| Explicit demo mode | Mock data is a *mode*, not a fallback (ADR-8) |
+| Desktop-first | Portfolio management is a desktop activity |
 
 ### 4.2 Patterns
 
-- **Container/Presentational**: Pages fetch, components display
-- **Custom Hooks**: Encapsulate data fetching logic
-- **Query Key Factory**: Centralized, hierarchical keys
-- **Optimistic Updates**: Immediate UI feedback on mutations
+- **Hook per resource** — `use-portfolios`, `use-holdings`, `use-heatmap`… encapsulate
+  query keys, fetching and the demo/backend switch
+- **API module per backend service** — `portfolio-api`, `assets-api`, `automation-api`,
+  `analytics-api`, all on one `apiClient`
+- **Scope by context, not props** — `PortfolioScopeProvider` narrows the shared portfolio
+  components to one portfolio without prop-drilling
+- **Adapters at the edge** — `lib/api/adapters.ts` converts backend entities into the
+  view model the presentational components already speak
 
 ---
 
@@ -126,24 +143,18 @@ In Docker, requests pass through Traefik, which calls psina `/verify`
 ### 5.1 Container Diagram (C2)
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                         Browser                               │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                    Next.js App                           │ │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │ │
-│  │  │   App Router │  │  Components  │  │  TanStack     │  │ │
-│  │  │   (Pages)    │  │  (UI + Biz)  │  │  Query Cache  │  │ │
-│  │  └──────────────┘  └──────────────┘  └───────────────┘  │ │
-│  │  ┌──────────────────────────────────────────────────┐   │ │
-│  │  │              API Client (lib/api)                 │   │ │
-│  │  └──────────────────────────────────────────────────┘   │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────┘
-                              │
-                              ▼ HTTP :8080
-┌──────────────────────────────────────────────────────────────┐
-│                    Backend API (Go)                           │
-└──────────────────────────────────────────────────────────────┘
+┌───────────────────────────── Browser ──────────────────────────────┐
+│  ┌──────────────┐  ┌───────────────┐  ┌──────────────────────────┐ │
+│  │  App Router  │  │  Components   │  │  TanStack Query cache    │ │
+│  │  (pages)     │  │  (ui + domain)│  │  + MutationCache toasts  │ │
+│  └──────┬───────┘  └───────┬───────┘  └────────────┬─────────────┘ │
+│         └──────────────────┴────────────┬──────────┘               │
+│                          ┌──────────────▼──────────────┐           │
+│                          │   lib/api (apiClient + …)   │           │
+│                          └──────────────┬──────────────┘           │
+└─────────────────────────────────────────┼──────────────────────────┘
+                                          ▼ POST /eye.v1.*
+                                   Backend (Go, Connect-RPC)
 ```
 
 ### 5.2 Component Diagram (C3)
@@ -151,84 +162,108 @@ In Docker, requests pass through Traefik, which calls psina `/verify`
 ```
 src/
 ├── app/
-│   ├── layout.tsx              # Root: fonts, metadata, providers
-│   ├── providers.tsx           # QueryClient + Theme + Auth
-│   ├── login/ register/        # Auth pages
-│   └── (dashboard)/            # Protected route group
-│       ├── layout.tsx          # Header + Sidebar (NAV_LINKS)
-│       ├── page.tsx            # Macro dashboard (world finance)
-│       ├── portfolios/         # aggregate + [id] Overview/Holdings/Settings
+│   ├── layout.tsx              # Root: fonts, pre-paint style script, metadata
+│   ├── providers.tsx           # Theme + QueryClient + Auth + devtools
+│   ├── globals.css tokens.css  # Tailwind layer + design tokens (4 themes)
+│   ├── login/                  # Sign-in (psina cookie flow)
+│   └── (dashboard)/            # Protected group; layout owns header + sidebar
+│       ├── page.tsx            # Macro dashboard (rates, markets, crypto, news)
+│       ├── portfolios/         # list + [id] Overview / Holdings / Settings / targets
+│       ├── accounts/           # accounts + provider credentials form
+│       ├── assets/             # catalog, verdict badges, quarantine section
+│       ├── prices/             # price table + history chart
 │       ├── rules/              # automation rules + manual actions
-│       ├── prices/             # asset prices + history
-│       ├── settings/           # PAT management + accounts
-│       └── assets/             # asset catalog
+│       └── settings/           # PAT management, appearance
 │
 ├── components/
 │   ├── ui/                     # shadcn/ui primitives
-│   ├── portfolio/              # summary, holdings table, allocation bars/chart/targets
-│   ├── macro/                  # dashboard widgets
-│   ├── rules/                  # rules view + actions
-│   └── prices/                 # price table + chart
+│   ├── heatmap/                # heatmap, heatmap-card, balance-heatmap
+│   ├── portfolio/              # value header, holdings table, allocation bars/chart/targets
+│   ├── macro/                  # dashboard widgets + widget-card
+│   ├── prices/  rules/         # feature views
+│   ├── brand/                  # greedy-eye-logo (state: idle | wander)
+│   ├── style-provider.tsx      # ledger ↔ observatory axis
+│   └── theme-toggle.tsx        # light ↔ dark axis
 │
-├── hooks/                      # use-portfolio, use-rules, use-pats, use-prices, …
+├── hooks/                      # use-portfolios, use-portfolio, use-holdings,
+│                               # use-accounts, use-assets, use-heatmap, use-prices,
+│                               # use-price-history, use-rules, use-pats, use-macro
 │
 └── lib/
-    ├── api/                    # client.ts + portfolio/automation/assets-api + adapters
-    ├── auth/                   # api.ts, pat-api.ts, auth-context.tsx
-    ├── portfolio-scope.tsx     # scopes usePortfolio to one portfolio
-    ├── types/api.ts            # generated from backend OpenAPI
-    ├── config/                 # query-client, dashboard-widgets
-    └── mocks/                  # fallback data + CoinGecko + macro
+    ├── api/                    # client.ts, portfolio-api, assets-api, automation-api,
+    │                           # analytics-api, backend-types, adapters, price-map
+    ├── auth/                   # api.ts (psina), auth-context, protected-route, pat-api
+    ├── config/                 # query-client, data-source, dashboard-widgets
+    ├── mocks/                  # demo-mode data only
+    ├── portfolio-scope.tsx     # scope context for shared portfolio components
+    ├── types/portfolio-view.ts # view model
+    └── utils.ts
 ```
 
 ### 5.3 Data Flow
 
 ```
-Component
-    │
-    ▼ uses
-Custom Hook (usePortfolios)
-    │
-    ▼ calls
-Service (portfolioService.list)
-    │
-    ▼ uses
-API Client (apiClient.get)
-    │
-    ▼ HTTP
-Backend API
+Page (client component)
+    │ uses
+Hook (usePortfolio)            ── reads USE_BACKEND / DEMO_MODE
+    │ calls
+API module (portfolioApi.calculatePortfolioValue)
+    │ uses
+apiClient.post('/eye.v1.PortfolioService/CalculatePortfolioValue')
+    │ HTTPS (cookies)
+Traefik → forwardAuth (psina) → Backend
 ```
 
 ---
 
 ## 6. Runtime View
 
-### 6.1 Portfolio List Flow
+### 6.1 Portfolio page
 
 ```
-1. User navigates to /portfolios
-2. Page component renders
-3. usePortfolios() hook called
-4. TanStack Query checks cache
-   - Cache hit: return cached data
-   - Cache miss: fetch from API
-5. Loading skeleton shown during fetch
-6. Data received → render portfolio cards
-7. Background refetch on window focus
+1. /portfolios/[id] renders, PortfolioScopeProvider pins the id
+2. usePortfolio() → holdings + accounts + assets, adapters build the view model
+3. useHeatmap(portfolioId) → GetHeatmap (flat, 24h) drives both the map and prices
+4. Loading: skeletons; error: toast + empty state, never a fabricated number
+5. Refetch on window focus and reconnect; no polling interval
 ```
 
-### 6.2 Create Portfolio Flow
+### 6.2 Prices without a price provider
+
+The backend has no batch "latest prices" RPC. `lib/api/price-map.ts` derives a
+price map from `GetHeatmap(flat, 24h)` — one call per portfolio — keyed by asset
+UUID and by uppercase symbol. Per-portfolio failures degrade to a partial map
+instead of throwing. Catalog assets that nobody holds have no price until a batch
+price RPC exists.
+
+### 6.3 Auth and session
 
 ```
-1. User clicks "New Portfolio"
-2. Dialog opens with form
-3. User fills name, description
-4. Form validates with Zod
-5. useCreatePortfolio().mutate() called
-6. Optimistic update: add to cache
-7. API request sent
-8. Success: invalidate queries, close dialog
-9. Error: rollback optimistic update, show toast
+1. Any RPC → 401 (first attempt only)
+2. apiClient calls refreshToken() → POST /auth.v1.AuthService/Refresh
+3. Refresh ok  → the original request is retried once
+   Refresh fails → redirectToLogin() via the registered Next.js router handler,
+   so basePath is respected, and the error is rethrown
+```
+
+`refreshToken()` is **single-flight**: parallel callers await one shared promise.
+This is not an optimisation. Psina rotates refresh tokens — a successful Refresh
+revokes the presented one, and replaying a revoked token trips reuse detection,
+which kills the whole token family and logs the user out. On load, the auth check
+and every data request can hit 401 at once; without coalescing, the first would
+rotate the cookie and the rest would replay a dead token.
+
+Locally, `NEXT_PUBLIC_MOCK_USER_ID` injects `X-User-Id` and short-circuits
+`checkAuth()`, so psina is not needed for UI work.
+
+### 6.4 Mutation
+
+```
+1. User submits a form (React Hook Form + Zod)
+2. useMutation → API module → backend
+3. Success: invalidate the affected query keys
+4. Failure: MutationCache.onError → toast. A silent failed mutation reads as a
+   dead button, which is how a rejected account deletion once presented
 ```
 
 ---
@@ -238,24 +273,25 @@ Backend API
 ### 7.1 Development
 
 ```
-localhost:3000 (Next.js dev server)
-       │
-       ▼ proxy/direct
-localhost:8080 (Backend API)
+localhost:3000 (next dev)  ──►  localhost:8080 (backend)
+NEXT_PUBLIC_MOCK_USER_ID   ──►  X-User-Id header, no psina needed
 ```
+
+Or fully offline: `NEXT_PUBLIC_USE_BACKEND=false` → demo mode, no backend at all.
 
 ### 7.2 Docker (Traefik + psina)
 
 ```
 Browser ──HTTPS──► Traefik ──forwardAuth──► psina /verify
-                      │  (200 + X-User-Id)
-                      ├──► eye-fe (Next.js)
-                      └──► eye    (Connect-RPC backend, h2c)
+                      │  (200 + X-User-Id, X-User-Email, X-User-Roles)
+                      ├──► eye-fe  (Next.js, /app and /_next)
+                      └──► eye     (Connect-RPC backend, h2c)
 ```
 
-All services share an external `proxy` Docker network. Each repo ships its own
-`deploy/compose.yaml` and `make up`. See [development.md](development.md) for the
-bring-up order and a full-stack example.
+All services share the external `proxy` network; each repo ships its own
+`deploy/compose.yaml` and `make up`. `NEXT_PUBLIC_*` values are **baked at build
+time** — the production image is built with `NEXT_PUBLIC_USE_BACKEND=true`.
+See [development.md](development.md) for the bring-up order.
 
 ---
 
@@ -263,60 +299,102 @@ bring-up order and a full-stack example.
 
 ### 8.1 State Management
 
-| State Type | Solution |
-|------------|----------|
+| State | Solution |
+|-------|----------|
 | Server state | TanStack Query |
-| Form state | React Hook Form |
-| UI state | React useState/useReducer |
-| URL state | Next.js searchParams |
+| Form state | React Hook Form + Zod |
+| UI state | `useState` / `useReducer` |
+| Cross-cutting UI state | Context: auth, portfolio scope, UI style |
+| URL state | App Router params and `searchParams` |
+| Theme | `next-themes` (scheme) + `html[data-style]` (style axis) |
 
-### 8.2 Error Handling
+### 8.2 Data source modes
 
-- API errors: Custom `ApiError` class with status codes
-- Component errors: Error boundaries (future)
-- Form errors: Zod validation messages
-- Network errors: Retry with exponential backoff
+`lib/config/data-source.ts` exposes exactly two modes:
+
+- `USE_BACKEND` (`NEXT_PUBLIC_USE_BACKEND=true`) — everything comes from the backend
+- `DEMO_MODE` — no backend at all; the app is a self-contained demo on `lib/mocks/`
+
+**Mock data must never render outside demo mode.** An empty state is honest, fake
+numbers are not. Hooks gate their queries on `USE_BACKEND` and return mock data
+only when `DEMO_MODE` is on.
 
 ### 8.3 Caching Strategy
 
-| Data | Stale Time | GC Time | Polling |
-|------|------------|---------|---------|
-| Portfolio list | 30s | 5min | No |
-| Portfolio value | 30s | 5min | 60s |
-| Latest prices | 30s | 5min | 60s |
-| Asset catalog | 1h | 2h | No |
+Defaults (`lib/config/query-client.ts`): `staleTime` 30s, `gcTime` 5min, 3 retries
+with exponential backoff (capped at 30s), refetch on window focus and on reconnect.
 
-### 8.4 Security
+| Data | Stale time | Polling |
+|------|-----------|---------|
+| Portfolio value / holdings | 5 min | no |
+| Prices, price history | 5 min | no |
+| Heatmap (portfolio, balance) | 60 s | no |
+| Macro widgets | 60 s | no |
 
-Authentication is delegated to **psina** (separate service).
+There is **no polling interval anywhere**: prices are refreshed server-side by the
+backend scheduler, and a focus-driven refetch is enough for a dashboard someone
+looks at (ADR-7).
 
-- **Local dev**: `NEXT_PUBLIC_MOCK_USER_ID` injects `X-User-Id` directly — no psina needed.
-- **Docker**: Traefik forwardAuth calls psina `/verify`, which validates the
-  session (HttpOnly `psina_access`/`psina_refresh` cookies) and injects
-  `X-User-Id`. The client auto-refreshes via `/auth.v1.AuthService/Refresh` on 401.
-- **External clients / MCP**: psina personal access tokens (`psn_…`), sent as
-  `Authorization: Bearer`. Minted/revoked at `/settings`.
+### 8.4 Theme model
+
+Two independent axes:
+
+- **Style** — `html[data-style="ledger" | "observatory"]`, persisted in
+  `localStorage` under `ge-style`, applied by an inline script in the root layout
+  **before first paint** (no flash). `style-provider.tsx` is a thin
+  `useSyncExternalStore` wrapper: the DOM attribute is the source of truth
+- **Scheme** — light/dark via `next-themes` (`.dark` class), default `system`
+
+All four combinations are defined in `src/app/tokens.css`, which is the source of
+truth for token values. `theme-color` meta is recomputed one frame after a change,
+because `next-themes` applies its class in a parent effect.
+
+The logo (`components/brand/greedy-eye-logo.tsx`) reads `useIsFetching` /
+`useIsMutating` and wanders while anything is in flight — the app's only
+global activity indicator.
+
+### 8.5 Error Handling
+
+- API errors: `ApiError` with status and parsed body
+- Mutations: global `MutationCache.onError` → toast; a local `onError` may add to it
+- Two retry layers, deliberately different: `apiClient` retries once, on 5xx and
+  network failures only — **4xx never retries** — with a 1s–5s backoff and a
+  10s per-request timeout; TanStack Query retries a *query* 3× on top of that
+  (mutations once)
+- Forms: Zod messages
+- 401: single-flight refresh, then redirect (§6.3)
+- Component-level error boundaries: **not implemented** (see §11)
+
+### 8.6 Security
+
+Authentication is delegated to **psina**; this app owns no user store and no tokens.
+
+- **Local dev**: `NEXT_PUBLIC_MOCK_USER_ID` injects `X-User-Id` directly
+- **Docker**: Traefik `forwardAuth` → psina `/verify` validates the HttpOnly
+  `psina_access` / `psina_refresh` cookies and injects the identity headers
+- **External clients / MCP**: psina personal access tokens (`psn_…`) as
+  `Authorization: Bearer`, minted and revoked at `/settings`
+- No token is ever placed in `localStorage`. If a Bearer flow is ever needed, it
+  goes in memory behind a `NEXT_PUBLIC_AUTH_MODE` switch
 
 ---
 
 ## 9. Architecture Decisions (ADRs)
 
-All Accepted unless noted. Each lists the decision and its main trade-off.
-
-| # | Decision | Why / trade-off |
-|---|----------|-----------------|
-| 1 | **Next.js 16 App Router** | Server Components, built-in routing/SSR; Server-vs-Client learning curve |
-| 2 | **shadcn/ui** (copy-paste, Radix) | Full ownership, a11y, no lock-in; manual updates |
-| 3 | **TanStack Query v5** | Caching, devtools, polling; extra dependency |
-| 4 | **Connect-RPC over fetch** | POST `/eye.v1.*` JSON to the Go backend; no generated client, hand-written `lib/api/*-api.ts` |
-| 5 | **Auth via psina** | forwardAuth (`X-User-Id`) in Docker, mock id locally, PAT (`psn_`) for external/MCP; FE owns no user store |
-| 6 | **OpenAPI type generation** | Types in `lib/types/api.ts` generated from backend spec; regenerate on contract change |
-| 7 | **Polling, not WebSocket** | 60s price refresh; simple, no backend WS; more requests |
-| 8 | **UI-first with mock data** | `lib/mocks/` lets the UI run without a backend; `NEXT_PUBLIC_USE_BACKEND` toggles real data |
-| 9 | **CoinGecko direct fetch** (temporary) | Live prices client-side until the backend price scheduler lands |
-| 10 | **Theme via CSS variables** | `next-themes` + Tailwind tokens; green/red status colors |
-| 11 | **Bar charts over pie** | Allocation bars read better for target-vs-current; pie kept for overview |
-| 12 | **Desktop-first** | Portfolio management is a desktop activity; mobile less optimal |
+| # | Decision | Status | Why / trade-off |
+|---|----------|--------|-----------------|
+| 1 | **Next.js 16 App Router** | Accepted | Routing, layouts, standalone output; most pages end up client components because data is user-scoped and cookie-authenticated |
+| 2 | **shadcn/ui** (copy-paste, Radix) | Accepted | Full ownership, a11y, no lock-in; manual updates |
+| 3 | **TanStack Query v5** | Accepted | One place for caching, retries and invalidation; extra dependency |
+| 4 | **Hand-written Connect-RPC client** | Accepted | `POST /eye.v1.*` JSON over `fetch`; no generated client, no `@connectrpc` runtime. Cheap for ~40 calls; must be kept in step with the proto by hand |
+| 5 | **Auth via psina** | Accepted | forwardAuth in Docker, mock id locally, PAT for external/MCP; the FE owns no user store |
+| 6 | **Backend types hand-maintained** | Accepted (supersedes "OpenAPI type generation") | The backend serves Connect-RPC and publishes **no OpenAPI spec**, so nothing can be generated from it. Types live in `src/lib/api/backend-types.ts` and mirror `api/v1/*.proto` by hand. `src/lib/types/api.ts` and `openapi-v3.yaml` are fossils of a dead REST API and are imported by nothing |
+| 7 | **Backend owns prices** | Accepted (supersedes "CoinGecko direct fetch" and 60s polling) | The browser never calls a price provider. Prices come from stored backend data via `GetHeatmap`; refresh is the backend scheduler's job. Only a static symbol → CoinGecko-id map survives, for outbound info links |
+| 8 | **Demo mode is a mode, not a fallback** | Accepted | `NEXT_PUBLIC_USE_BACKEND=false` runs the whole app on `lib/mocks/`. Mock data never leaks into a backend-connected session |
+| 9 | **Heatmap is the allocation view** | Accepted (supersedes "bar charts over pie") | A treemap carries size and change at once; bars remain for target-vs-current, the donut is gone. Recharts, not nivo — it was already a dependency and the density nivo buys is only needed by a market-wide map |
+| 10 | **Two-axis theme via CSS variables** | Accepted | style × scheme, tokens in `tokens.css`, pre-paint script kills the flash |
+| 11 | **`basePath: /app`** | Accepted | One domain shared with the backend and auth behind Traefik; every redirect must go through the router, not `window.location`, to keep the prefix |
+| 12 | **Desktop-first** | Accepted | Portfolio management is a desktop activity; small screens are usable, not optimal |
 
 ---
 
@@ -324,19 +402,20 @@ All Accepted unless noted. Each lists the decision and its main trade-off.
 
 ### 10.1 Performance
 
+Targets, not measurements — no budget is enforced in CI yet.
+
 | Metric | Target |
 |--------|--------|
 | Largest Contentful Paint | < 2s |
-| First Input Delay | < 100ms |
+| Interaction to Next Paint | < 200ms |
 | Cumulative Layout Shift | < 0.1 |
-| Bundle size (gzipped) | < 500KB |
 
 ### 10.2 Accessibility
 
-- Keyboard navigation (via Radix)
-- ARIA labels on interactive elements
-- Color contrast (WCAG AA)
-- Focus indicators
+- Keyboard navigation via Radix primitives
+- Visible focus rings (`focus-visible:ring-*`) on interactive elements
+- Colour is never the only signal: verdicts and excluded state also carry text
+- Contrast is a property of `tokens.css`; all four themes are meant to hold WCAG AA
 
 ---
 
@@ -346,17 +425,27 @@ All Accepted unless noted. Each lists the decision and its main trade-off.
 
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|------------|
-| Backend API changes | Medium | High | Generated types, versioned API |
-| Bundle size growth | Medium | Medium | Code splitting, lazy loading |
-| Stale cache issues | Low | Medium | Proper invalidation, short stale time |
+| Proto contract drifts from `backend-types.ts` | High | High | Types are hand-mirrored; a contract change must touch this repo in the same cycle |
+| Bundle growth | Medium | Medium | Code splitting, no chart library beyond Recharts |
+| Stale cache after a mutation | Low | Medium | Explicit invalidation per mutation |
 
 ### Technical Debt
 
-1. **No E2E tests** - Manual testing only
-2. **No error boundaries** - Errors crash components
-3. **No i18n setup** - English only
-4. **Client-side prices** - CoinGecko fetched in the browser until a backend price scheduler exists
-5. **Backend vs client totals** - backend stores prices for a subset of assets; the UI shows the fuller client-side total
+1. **No tests at all** — no unit, component or E2E tests in this repo. The largest
+   gap in the project's three repos
+2. **`ValuationCoverage` is not consumed.** The backend reports which positions it
+   could not price; the UI shows only the headline value. This contradicts quality
+   goal 1 and is the highest-value debt item here
+3. **`excludedCount` is not surfaced in the overview** — quarantined holdings are
+   visible on the portfolio page, but the aggregate view does not say the sum
+   excludes anything
+4. **Dead code**: `src/lib/types/{api,enums,models}.ts`, `src/lib/types/openapi-v3.yaml`
+   and `src/components/layout/{header,sidebar}.tsx` have zero importers
+5. **No error boundaries** — a render error takes the subtree down
+6. **No i18n** — English only
+7. **Known UI bugs** (tracked in beads): the Sync button stays "Syncing…" until
+   navigation; the holdings table hides the account column when there is a single
+   source; layout breaks on small screens
 
 ---
 
@@ -364,14 +453,16 @@ All Accepted unless noted. Each lists the decision and its main trade-off.
 
 | Term | Definition |
 |------|------------|
-| Server Component | React component rendered on server (no client JS) |
-| Client Component | React component with 'use client', runs in browser |
-| Query Key | Unique identifier for TanStack Query cache entry |
-| Optimistic Update | Update UI before server confirms |
-| Stale Time | How long data is considered fresh |
+| Connect-RPC | Buf's protocol; the backend serves it as JSON over `POST /eye.v1.*` |
+| Demo mode | `NEXT_PUBLIC_USE_BACKEND=false`: the app runs entirely on mock data |
+| Heatmap node | `{id, label, parentId, size, colorValue, price, assetId}` from `GetHeatmap` |
+| ValuationCoverage | Backend block listing which positions a portfolio value could not price |
+| Quarantine | Assets the scam filter flagged; their holdings are excluded from totals |
+| PAT | psina personal access token (`psn_…`) for external clients such as MCP |
+| Style axis | `ledger` \| `observatory` — visual style, independent of light/dark |
 
 ---
 
-**Document Version**: 2.0  
-**Last Updated**: 2026-06  
+**Document Version**: 3.0
+**Last Updated**: 2026-08-01
 **Status**: Active

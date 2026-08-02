@@ -6,15 +6,16 @@ Dashboard frontend for Greedy Eye portfolio management platform.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
+![Status](https://img.shields.io/badge/status-alpha-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
 ## Tech Stack
 
-- **Framework**: Next.js 16 (App Router)
-- **Language**: TypeScript 5
-- **Styling**: Tailwind CSS + shadcn/ui
+- **Framework**: Next.js 16 (App Router, `basePath: /app`, standalone output)
+- **Runtime**: React 19, TypeScript 5 (strict)
+- **Styling**: Tailwind CSS v4 + shadcn/ui, two styles × light/dark
 - **State**: TanStack Query v5
 - **Charts**: Recharts
 - **Forms**: React Hook Form + Zod
@@ -23,8 +24,8 @@ Dashboard frontend for Greedy Eye portfolio management platform.
 
 ### Prerequisites
 
-- Node.js 20+ (CI builds on 22; Next.js 16 requires Node 20.9+)
-- Backend API running on http://localhost:8080
+- Node.js 20.9+ (CI builds on 22)
+- A backend on http://localhost:8080 — or none at all, see demo mode below
 
 ### Installation
 
@@ -37,34 +38,49 @@ cp .env.example .env.local
 
 ```bash
 npm run dev
-# Open http://localhost:3000
+# Open http://localhost:3000/app
 ```
 
-### Type Generation
+Two ways to run:
 
-Backend types live in `src/lib/api/backend-types.ts`, hand-maintained to
-match the backend `api/v1/*.proto` files (the source of truth). The backend
-serves Connect-RPC, which the OpenAPI generator does not cover, so there is
-no OpenAPI spec to generate from — mirror proto changes into `backend-types.ts`
+| Mode | Env | What you get |
+|------|-----|--------------|
+| Backend | `NEXT_PUBLIC_USE_BACKEND=true` + `NEXT_PUBLIC_MOCK_USER_ID=<uuid>` | Real data, no psina needed locally |
+| Demo | `NEXT_PUBLIC_USE_BACKEND=false` | Self-contained demo on mock data, no backend at all |
+
+Mock data never renders in backend mode — an empty state is honest, fake numbers
+are not.
+
+### Backend types
+
+Backend types live in `src/lib/api/backend-types.ts`, hand-maintained to match
+the backend `api/v1/*.proto` files (the source of truth). The backend serves
+Connect-RPC, which the OpenAPI generator does not cover, so there is **no
+OpenAPI spec to generate from** — mirror proto changes into `backend-types.ts`
 by hand.
 
 ## Project Structure
 
 ```
 src/
-├── app/                    # Next.js App Router
-│   ├── (dashboard)/        # Protected dashboard routes
-│   ├── layout.tsx          # Root layout
-│   └── providers.tsx       # Client-side providers
+├── app/
+│   ├── (dashboard)/        # Protected routes: portfolios, accounts, assets,
+│   │                       # prices, rules, settings, macro dashboard
+│   ├── login/              # psina cookie sign-in
+│   ├── layout.tsx          # Root layout + pre-paint theme script
+│   ├── providers.tsx       # Theme + QueryClient + Auth
+│   └── tokens.css          # Design tokens: 2 styles × light/dark
 ├── components/
 │   ├── ui/                 # shadcn/ui primitives
-│   ├── layout/             # Header, Sidebar
-│   └── {feature}/          # Feature components
+│   ├── heatmap/            # portfolio + balance treemaps
+│   ├── portfolio/ macro/ prices/ rules/
+│   └── brand/              # logo (wanders while requests are in flight)
 ├── lib/
-│   ├── api/                # API client & services
-│   ├── types/              # TypeScript types
-│   └── config/             # Configuration
-└── hooks/                  # Custom React hooks
+│   ├── api/                # Connect-RPC client, per-service modules, adapters
+│   ├── auth/               # psina cookie flow, PATs, protected route
+│   ├── config/             # query client, data-source mode, widgets
+│   └── mocks/              # demo-mode data only
+└── hooks/                  # one hook per resource
 ```
 
 ## Documentation
@@ -74,12 +90,19 @@ src/
 
 ## Features
 
-- **Dashboard** (`/`) — macro/world-finance overview widgets (rates, markets, crypto, news)
-- **Portfolios** (`/portfolios`, `/portfolios/[id]`) — aggregate + per-portfolio
-  Overview / Holdings / Settings, with editable target allocations
-- **Rules** (`/rules`) — automation rules + manual rebalance actions
+- **Dashboard** (`/`) — macro overview widgets (rates, markets, crypto, news)
+- **Portfolios** (`/portfolios`, `/portfolios/[id]`) — balance heatmap across all
+  portfolios; per-portfolio Overview / Holdings / Settings with editable target
+  allocations and a performance treemap instead of a donut
+- **Accounts** (`/accounts`) — wallets, exchanges, manual accounts, provider
+  credentials (write-only secrets, admin-only system scopes), Sync
+- **Assets** (`/assets`) — catalog with scam-filter verdict badges and a
+  quarantine section for flagged assets
 - **Prices** (`/prices`) — asset prices and history charts
-- **Settings** (`/settings`) — personal access tokens (MCP) and accounts
+- **Rules** (`/rules`) — automation rules + manual portfolio actions
+- **Settings** (`/settings`) — personal access tokens (for MCP), appearance
+
+Prices come from the backend only; the browser never calls a price provider.
 
 ## Scripts
 
@@ -88,14 +111,22 @@ npm run dev          # Start development server
 npm run build        # Build for production
 npm run start        # Start production server
 npm run lint         # Run ESLint
+npm run typecheck    # tsc --noEmit
+npm run check        # typecheck + lint + build (what CI runs)
 ```
+
+There are no tests in this repo yet.
 
 ## Environment Variables
 
 ```bash
-NEXT_PUBLIC_API_URL=http://localhost:8080
-NEXT_PUBLIC_MOCK_USER_ID=mock-user-123
+NEXT_PUBLIC_API_URL=http://localhost:8080  # "" behind Traefik (relative URLs)
+NEXT_PUBLIC_USE_BACKEND=true               # false → demo mode on mock data
+NEXT_PUBLIC_MOCK_USER_ID=<uuid>            # local only: injects X-User-Id, skips psina
 ```
+
+`NEXT_PUBLIC_*` values are baked at **build** time — the production image is built
+with `NEXT_PUBLIC_USE_BACKEND=true`.
 
 ## Run the full stack (example)
 

@@ -3,7 +3,7 @@
    2 styles (ledger | observatory) × 2 schemes (light | dark)
    Wiring: html[data-style="…"] attribute + .dark class (next-themes).
    Maps onto shadcn/ui variables + ge-specific extras.
-   Source of truth: design-system note (vault) — keep in sync.
+   Source of truth: this file. The design-system note describes intent, not values.
    ============================================================ */
 
 :root {

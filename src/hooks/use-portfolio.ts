@@ -14,18 +14,38 @@ import {
   getAllocationChartData,
   mockPrices,
 } from '@/lib/mocks'
-import type { PortfolioSummary, AllocationSlice } from '@/lib/types/portfolio-view'
+import type { PortfolioSummary, AllocationSlice, ValuationCoverage } from '@/lib/types/portfolio-view'
 import { listPortfolios, listHoldings, listAccounts, calculatePortfolioValue } from '@/lib/api/portfolio-api'
 import { listAssets } from '@/lib/api/assets-api'
 import { fetchPortfolioPriceMap } from '@/lib/api/price-map'
 import { buildRawHoldings } from '@/lib/api/adapters'
-import { holdingToDecimal } from '@/lib/api/backend-types'
+import { holdingToDecimal, type PortfolioValueResponse } from '@/lib/api/backend-types'
 import { usePortfolioScope } from '@/lib/portfolio-scope'
 import { listRules, readTargets, TARGET_ALLOCATION_RULE_TYPE } from '@/lib/api/automation-api'
 import { USE_BACKEND as USE_BACKEND_API } from '@/lib/config/data-source'
 
 interface PortfolioQueryResult extends PortfolioSummary {
   isLivePrices: boolean
+}
+
+/**
+ * Merge the per-portfolio coverage reports into one. Counts add up; the capped
+ * unpriced lists concatenate, and truncation is sticky — if any portfolio
+ * truncated its list, the merged list is short too.
+ */
+function mergeCoverage(values: (PortfolioValueResponse | null)[]): ValuationCoverage | undefined {
+  const reports = values.filter((v): v is PortfolioValueResponse => !!v?.coverage)
+  if (reports.length === 0) return undefined
+
+  return reports.reduce<ValuationCoverage>((acc, v) => {
+    const c = v.coverage!
+    return {
+      pricedCount: (acc.pricedCount ?? 0) + (c.pricedCount ?? 0),
+      unpricedCount: (acc.unpricedCount ?? 0) + (c.unpricedCount ?? 0),
+      unpriced: [...(acc.unpriced ?? []), ...(c.unpriced ?? [])],
+      unpricedTruncated: acc.unpricedTruncated || (c.unpricedTruncated ?? false),
+    }
+  }, {})
 }
 
 export function usePortfolio() {
@@ -65,8 +85,8 @@ export function usePortfolio() {
         // asset UUID, matching holdings). Empty when unscoped or no rule set → no
         // allocations are produced and the target UI hides itself.
         const targets = readTargets(rules.find((r) => r.ruleType === TARGET_ALLOCATION_RULE_TYPE))
-        // Holdings without a stored backend price are dropped from the
-        // dashboard — they would render as zero-value noise rows.
+        // Rows carry a price only where the backend stored one; the rest are
+        // marked unpriced and shown as present-but-unvalued.
         const portfolio = calculatePortfolio(rawHoldings, priceResult.prices, targets)
 
         // Sum backend-calculated portfolio values (uses stored prices, COALESCE for portfolio_id).
@@ -74,14 +94,21 @@ export function usePortfolio() {
           if (!v?.totalValueAmount) return sum
           return sum + holdingToDecimal(v.totalValueAmount, v.decimals)
         }, 0)
-        // Prefer the client-calculated total: it uses the same prices as the
-        // rendered holdings rows, so the summary stays consistent with them.
-        // Backend total (stored prices, currently ETH/USDT only) is the fallback.
-        const totalValue = portfolio.totalValue > 0 ? portfolio.totalValue : beTotal
+        // The backend total wins. It is the one that applies the exclusion flag
+        // and the market-depth gate and reports what it left out, so it is the
+        // number the coverage line below actually describes. The client sum is
+        // a fallback for when the RPC failed outright — it is computed from the
+        // heatmap's prices, which cover held assets only, and treating it as
+        // authoritative is what let a client-side pricing bug overwrite a
+        // correct server total with a 250x overstatement (2026-08-02).
+        const totalValue = beValues.some((v) => v?.totalValueAmount)
+          ? beTotal
+          : portfolio.totalValue
 
         return {
           ...portfolio,
           totalValue,
+          coverage: mergeCoverage(beValues),
           isLivePrices: priceResult.isLive,
           dataSource: 'backend' as const,
         }

@@ -15,13 +15,17 @@ import {
 } from '@/components/ui/table'
 import { PriceHistoryChart } from './price-history-chart'
 
-/** Look up a live price entry by asset symbol (prices are keyed by uppercase symbol). */
+/**
+ * Look up a live price entry by asset id. Never by symbol: two assets can carry
+ * the same ticker — that is what an impostor token is — and a symbol lookup
+ * hands one of them the other's quote.
+ */
 function priceFor(
   prices: Record<string, { price: number; change24h: number }> | undefined,
-  symbol?: string
+  assetId?: string
 ) {
-  if (!prices || !symbol) return undefined
-  return prices[symbol.toUpperCase()]
+  if (!prices || !assetId) return undefined
+  return prices[assetId]
 }
 
 export function PricesView() {
@@ -64,7 +68,7 @@ export function PricesView() {
             </TableHeader>
             <TableBody>
               {assets.map((asset) => {
-                const entry = priceFor(prices, asset.symbol)
+                const entry = priceFor(prices, asset.id)
                 const isSelected = asset.id === selectedId
                 return (
                   <TableRow

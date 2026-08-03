@@ -15,9 +15,17 @@ export interface PriceMapResult {
 }
 
 /**
- * Build a price map for the given portfolios, keyed by backend asset UUID
- * and by uppercase symbol (holdings match by UUID, catalog views by symbol).
- * Per-portfolio failures degrade to a partial map instead of throwing.
+ * Build a price map for the given portfolios, keyed by asset id — the backend
+ * UUID in backend mode, the CoinGecko slug in demo mode. Per-portfolio failures
+ * degrade to a partial map instead of throwing.
+ *
+ * Never key this map by symbol. It used to carry a second entry per node under
+ * the uppercase symbol, and a lookup that missed by id fell through to it. A
+ * miss by id means the backend did not price that asset, so the fallback fired
+ * exactly when it had nothing honest to say and answered with some other
+ * asset's price. Found 2026-08-02 on dev: an impostor token calling itself USDT
+ * off a non-Tether contract held 1,894,544.9 units, borrowed Tether's $0.99917
+ * and put ~$1.89M on a dashboard whose real total was $7,568.70.
  */
 export async function fetchPortfolioPriceMap(portfolioIds: string[]): Promise<PriceMapResult> {
   const heatmaps = await Promise.all(
@@ -33,12 +41,7 @@ export async function fetchPortfolioPriceMap(portfolioIds: string[]): Promise<Pr
   for (const heatmap of heatmaps) {
     for (const node of heatmap?.nodes ?? []) {
       if (!node.assetId || node.price === undefined) continue
-      const entry = { price: node.price, change24h: node.colorValue ?? 0 }
-      prices[node.assetId] = entry
-      const symbolKey = node.label?.toUpperCase()
-      if (symbolKey && !(symbolKey in prices)) {
-        prices[symbolKey] = entry
-      }
+      prices[node.assetId] = { price: node.price, change24h: node.colorValue ?? 0 }
     }
   }
 

@@ -162,6 +162,26 @@ export interface PortfolioValueResponse {
   // silently diverges from the wallet.
   excludedCount?: number
   excludedValueAmount?: string
+  // Holdings the backend could not price at all. The total covers priced
+  // holdings only (ADR-008), so this travels with it; the field was being
+  // dropped on the floor here, which is how the dashboard came to invent its
+  // own numbers for these rows.
+  coverage?: ValuationCoverage
+}
+
+export interface ValuationCoverage {
+  pricedCount?: number
+  unpricedCount?: number
+  unpriced?: UnpricedHolding[]
+  unpricedTruncated?: boolean
+}
+
+export interface UnpricedHolding {
+  holdingId?: string
+  assetId?: string
+  symbol?: string
+  // UNPRICED_REASON_NO_QUOTE | UNPRICED_REASON_THIN_MARKET
+  reason?: string
 }
 
 // --- Analytics (heatmap) ---

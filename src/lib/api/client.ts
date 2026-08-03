@@ -55,13 +55,18 @@ class ApiClient {
       ...(mockUserId ? { 'X-User-Id': mockUserId, 'X-User-Email': 'dev@greedyeye.local' } : {}),
       ...options.headers,
     }
+    // 10s suits a read. It does not suit every call, and until this default was
+    // per-request overridable it was silently applied to account sync too — a
+    // multi-chain operation measured at ~22s. Prod 2026-07-25 shows the result:
+    // syncs aborted at 10.005s server-side, mid-write. A long call passes its
+    // own timeout; see syncAccount.
     this.defaultTimeout = options.timeout ?? 10000  // 10s — fail fast
     this.defaultRetries = options.retries ?? 1      // 1 retry — avoid 90s hangs
   }
 
-  private async doFetch<T>(url: string, options: RequestInit): Promise<T> {
+  private async doFetch<T>(url: string, options: RequestInit, timeoutMs = this.defaultTimeout): Promise<T> {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), this.defaultTimeout)
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
     // Attach Bearer token if available (psina JWT flow)
     const response = await fetch(url, {
@@ -88,11 +93,12 @@ class ApiClient {
   private async fetchWithRetry<T>(
     url: string,
     options: RequestInit,
-    retries: number
+    retries: number,
+    timeoutMs?: number
   ): Promise<T> {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        return await this.doFetch<T>(url, options)
+        return await this.doFetch<T>(url, options, timeoutMs)
       } catch (error) {
         // On 401: attempt token refresh once, then retry the original request
         if (error instanceof ApiError && error.status === 401 && attempt === 0) {
@@ -142,18 +148,18 @@ class ApiClient {
   }
 
   async get<T>(path: string, options: RequestOptions = {}): Promise<T> {
-    const { params, retries = this.defaultRetries, ...fetchOptions } = options
+    const { params, retries = this.defaultRetries, timeout, ...fetchOptions } = options
     const url = this.buildURL(path, params)
 
     return this.fetchWithRetry<T>(url, {
       method: 'GET',
       headers: { ...this.defaultHeaders, ...fetchOptions.headers },
       ...fetchOptions,
-    }, retries)
+    }, retries, timeout)
   }
 
   async post<T>(path: string, data?: unknown, options: RequestOptions = {}): Promise<T> {
-    const { params, retries = this.defaultRetries, ...fetchOptions } = options
+    const { params, retries = this.defaultRetries, timeout, ...fetchOptions } = options
     const url = this.buildURL(path, params)
 
     return this.fetchWithRetry<T>(url, {
@@ -161,11 +167,11 @@ class ApiClient {
       headers: { ...this.defaultHeaders, ...fetchOptions.headers },
       body: data ? JSON.stringify(data) : undefined,
       ...fetchOptions,
-    }, retries)
+    }, retries, timeout)
   }
 
   async put<T>(path: string, data?: unknown, options: RequestOptions = {}): Promise<T> {
-    const { params, retries = this.defaultRetries, ...fetchOptions } = options
+    const { params, retries = this.defaultRetries, timeout, ...fetchOptions } = options
     const url = this.buildURL(path, params)
 
     return this.fetchWithRetry<T>(url, {
@@ -173,18 +179,18 @@ class ApiClient {
       headers: { ...this.defaultHeaders, ...fetchOptions.headers },
       body: data ? JSON.stringify(data) : undefined,
       ...fetchOptions,
-    }, retries)
+    }, retries, timeout)
   }
 
   async delete<T>(path: string, options: RequestOptions = {}): Promise<T> {
-    const { params, retries = this.defaultRetries, ...fetchOptions } = options
+    const { params, retries = this.defaultRetries, timeout, ...fetchOptions } = options
     const url = this.buildURL(path, params)
 
     return this.fetchWithRetry<T>(url, {
       method: 'DELETE',
       headers: { ...this.defaultHeaders, ...fetchOptions.headers },
       ...fetchOptions,
-    }, retries)
+    }, retries, timeout)
   }
 }
 

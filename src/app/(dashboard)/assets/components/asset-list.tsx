@@ -106,9 +106,10 @@ export function AssetList() {
           <TableBody>
             {filtered.map((a) => {
               const url = externalUrl(a)
-              const price = a.symbol
-                ? priceResult?.prices[a.symbol.toUpperCase()]?.price
-                : undefined
+              // By asset id, never by symbol: a lookalike token shares the
+              // ticker of the asset it imitates, and a symbol lookup would
+              // print the real one's price on the impostor's row.
+              const price = priceResult?.prices[a.id]?.price
               const contract = contractAddress(a)
               return (
               <TableRow key={a.id} title={a.id}>

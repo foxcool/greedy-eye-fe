@@ -2,7 +2,7 @@
 
 import { usePortfolio } from '@/hooks/use-portfolio'
 import { formatCurrency, formatPercentage } from '@/lib/mocks'
-import { Database, WifiOff } from 'lucide-react'
+import { WifiOff } from 'lucide-react'
 
 // Chrome-less value block: total, 24h change and provenance meta, laid out to sit
 // as the header band of another card (see HeatmapCard's `header` prop) rather than
@@ -43,6 +43,18 @@ export function PortfolioValueHeader() {
         </span>
       </div>
 
+      {/* No coverage banner here on purpose. ADR-008 exists for one case: real
+          money the system failed to value, the way a portfolio of live FinEx
+          ETFs read $0.00. "Unpriced" is a poor stand-in for that set — on a
+          synced wallet most unpriced rows are airdropped litter (100 billion
+          HA138COM, 888,888 KICK), which is not a gap in the total, and saying
+          "excludes 134 positions" both overstates the number and trains the eye
+          to skip the one line that will matter when a real position falls out.
+          The disclosure belongs here only once a holding can be told from
+          litter — personal-6ae.3 adds that signal (arrived by sync, never
+          bought, no cost basis). Until then it stays per-row in the holdings
+          table, where a dash claims nothing. */}
+
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground mt-2 tabular-nums">
         <span>{portfolio.holdings.length} assets</span>
         <span aria-hidden="true">•</span>
@@ -54,26 +66,22 @@ export function PortfolioValueHeader() {
             second: '2-digit',
           }).format(portfolio.lastUpdated)}
         </span>
-        <span aria-hidden="true">•</span>
         {isFetching && (
           <span
             className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"
             aria-hidden="true"
           />
         )}
-        {portfolio.dataSource === 'backend' ? (
-          <span
-            className="flex items-center gap-1 text-blue-500"
-            title="Holdings and prices from backend"
-          >
-            <Database size={12} aria-hidden="true" />
-            Backend
-          </span>
-        ) : (
-          <span className="flex items-center gap-1" title="Demo data (mock prices)">
-            <WifiOff size={12} aria-hidden="true" />
-            Demo
-          </span>
+        {/* Only demo is worth a badge. "Backend" marked the normal case, which
+            needs no marking; what needs saying is when the numbers are fake. */}
+        {portfolio.dataSource !== 'backend' && (
+          <>
+            <span aria-hidden="true">•</span>
+            <span className="flex items-center gap-1" title="Demo data (mock prices)">
+              <WifiOff size={12} aria-hidden="true" />
+              Demo
+            </span>
+          </>
         )}
       </div>
     </div>

@@ -35,32 +35,36 @@ export function calculatePortfolio(
   holdings = rawHoldings,
   prices = mockPrices,
   targets = targetPercentages,
-  options: { includeZeroValue?: boolean } = {}
 ): PortfolioSummary {
   // Step 1: Calculate holdings with values
   const portfolioHoldings: PortfolioHolding[] = holdings
     .map((holding) => {
       const quantity = holding.sources.reduce((sum, s) => sum + s.amount, 0)
-      // assetId match covers mock holdings (CoinGecko ids); symbol fallback
-      // covers backend holdings whose assetId is a UUID.
-      const priceData =
-        prices[holding.assetId] ||
-        prices[holding.symbol.toUpperCase()] || { price: 0, change24h: 0 }
-      const value = quantity * priceData.price
+      // By asset id only. A miss means the source could not price this asset,
+      // and the honest answer to that is "unknown", not another asset's price:
+      // the symbol fallback that used to sit here put $1.89M of impostor USDT
+      // on the dashboard at Tether's quote (2026-08-02).
+      const priceData = prices[holding.assetId]
+      const value = quantity * (priceData?.price ?? 0)
 
       return {
         assetId: holding.assetId,
         symbol: holding.symbol,
         name: holding.name,
         quantity,
-        price: priceData.price,
+        price: priceData?.price ?? 0,
         value,
         percentage: 0, // will calculate after total
-        change24h: priceData.change24h,
+        change24h: priceData?.change24h ?? 0,
+        // An unpriced holding is present but unvalued — a different statement
+        // from a position worth zero, and the reason a $0 row is not noise.
+        unpriced: priceData === undefined,
         sources: holding.sources.filter(s => s.amount > 0), // exclude zero balances
       }
     })
-    .filter((h) => options.includeZeroValue ? h.quantity > 0 : h.value > 0)
+    // Unpriced rows stay. Dropping them traded a total that lies upward for one
+    // that lies downward, and hid the very positions the coverage report names.
+    .filter((h) => h.quantity > 0 || h.value > 0)
 
   // Step 2: Calculate total and percentages
   const totalValue = portfolioHoldings.reduce((sum, h) => sum + h.value, 0)

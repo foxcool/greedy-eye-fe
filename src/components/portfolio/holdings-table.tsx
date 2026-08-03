@@ -122,22 +122,33 @@ function HoldingRow({ holding, isExpanded, onToggle, showSources }: HoldingRowPr
           <div className="flex items-center gap-2">
             <span className="font-medium text-foreground">{holding.symbol}</span>
             <span className="text-muted-foreground">{holding.name}</span>
+            {holding.unpriced && (
+              <span
+                className="px-1.5 py-0.5 rounded text-[10px] uppercase font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                title="Held but not valued: no price the backend was willing to use. It is not in the total."
+              >
+                unpriced
+              </span>
+            )}
           </div>
         </td>
         <td className="px-4 py-3 text-right text-secondary-foreground font-mono">
           {formatQuantity(holding.quantity)}
         </td>
+        {/* An unpriced holding shows dashes, not zeros. Zero is a claim about
+            the market; a dash says the position is held and not valued, which
+            is what the backend's coverage report actually states. */}
         <td className="px-4 py-3 text-right text-muted-foreground font-mono">
-          {formatCurrency(holding.price, holding.price < 1 ? 4 : 2)}
+          {holding.unpriced ? '—' : formatCurrency(holding.price, holding.price < 1 ? 4 : 2)}
         </td>
         <td className="px-4 py-3 text-right text-foreground font-mono">
-          {formatCurrency(holding.value)}
+          {holding.unpriced ? '—' : formatCurrency(holding.value)}
         </td>
         <td className="px-4 py-3 text-right text-muted-foreground">
-          {holding.percentage.toFixed(1)}%
+          {holding.unpriced ? '—' : `${holding.percentage.toFixed(1)}%`}
         </td>
-        <td className={`px-4 py-3 text-right font-mono ${changeColor}`}>
-          {formatPercentage(holding.change24h || 0)}
+        <td className={`px-4 py-3 text-right font-mono ${holding.unpriced ? 'text-muted-foreground' : changeColor}`}>
+          {holding.unpriced ? '—' : formatPercentage(holding.change24h || 0)}
         </td>
       </tr>
       

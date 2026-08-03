@@ -175,6 +175,20 @@ export interface SyncAccountResponse {
   errors: string[]
 }
 
+// A sync fans out to a provider per chain and then rewrites the account's
+// positions: measured at ~22s for a heavy EVM wallet, against a client default
+// of 10s. It also carries its own server-side deadline now, so a timeout here
+// only means "stop waiting", never "stop the write".
+//
+// retries: 0 because this is a write. The default single retry re-sent an
+// aborted sync while the first one was still running on the server, pointing
+// two concurrent writers at the same account's rows.
 export async function syncAccount(accountId: string): Promise<SyncAccountResponse> {
-  return apiClient.post<SyncAccountResponse>(RPC('SyncAccount'), { accountId })
+  return apiClient.post<SyncAccountResponse>(RPC('SyncAccount'), { accountId }, {
+    // Deliberately longer than the backend's syncTimeout (3 min), so the
+    // deadline that fires is the server's and the user sees its error rather
+    // than a bare client abort.
+    timeout: 210_000,
+    retries: 0,
+  })
 }

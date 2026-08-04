@@ -5,8 +5,13 @@
 **Status**: Backend integrated. Auth via psina (forwardAuth). Connect-RPC API layer.
 
 ### What's Implemented
-- Dashboard (`/`): macro/world-finance overview — interest rates, markets, crypto,
-  news widgets (mock data source, designed to swap for real fetchers)
+- Dashboard (`/`): configurable widget grid. Widget INSTANCES (type + params +
+  order + size) persisted per user through `SettingsService` under the key
+  `dashboard.v1`; localStorage in demo mode. Registry in
+  `lib/config/dashboard-widgets.ts` (definitions) and
+  `components/dashboard/widget-registry.tsx` (components). Real widgets:
+  portfolio-value, heatmap. The macro widgets (rates, markets, crypto, news)
+  are mock-backed and offered in demo mode only
 - Portfolios: `/portfolios` aggregate overview + list; `/portfolios/[id]` with
   Overview / Holdings / Settings tabs, scoped via PortfolioScopeProvider
 - Target allocations: per-asset target % persisted in an AutomationService rule
@@ -69,7 +74,7 @@ src/
 ├── app/
 │   ├── (dashboard)/
 │   │   ├── layout.tsx          # Header + Sidebar (NAV_LINKS)
-│   │   ├── page.tsx            # Macro dashboard
+│   │   ├── page.tsx            # Configurable dashboard
 │   │   ├── portfolios/         # aggregate + list; [id] Overview/Holdings/Settings
 │   │   │   └── [id]/components/ # holdings-manager, portfolio-settings, target-allocation-editor
 │   │   ├── rules/              # /rules page
@@ -81,7 +86,8 @@ src/
 │   └── providers.tsx           # QueryClient + ThemeProvider
 ├── components/
 │   ├── portfolio/              # Summary card, holdings table, allocation bars/chart/targets
-│   ├── macro/                  # Macro dashboard widgets
+│   ├── dashboard/              # Widget grid, frame, edit mode, registry
+│   ├── macro/                  # Mock-backed widgets (demo only)
 │   ├── rules/                  # Rules view + portfolio actions
 │   └── prices/                 # Price table + history chart
 ├── hooks/
@@ -91,6 +97,7 @@ src/
 │   ├── use-pats.ts             # psina PAT management
 │   ├── use-price-history.ts    # Price history for /prices
 │   ├── use-macro.ts            # Macro snapshot (mock)
+│   ├── use-dashboard-config.ts # Dashboard layout (SettingsService / localStorage)
 │   ├── use-holdings.ts  use-accounts.ts  use-assets.ts  use-prices.ts
 └── lib/
     ├── api/

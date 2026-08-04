@@ -167,7 +167,7 @@ src/
 │   ├── globals.css tokens.css  # Tailwind layer + design tokens (4 themes)
 │   ├── login/                  # Sign-in (psina cookie flow)
 │   └── (dashboard)/            # Protected group; layout owns header + sidebar
-│       ├── page.tsx            # Macro dashboard (rates, markets, crypto, news)
+│       ├── page.tsx            # Configurable dashboard (widget instances)
 │       ├── portfolios/         # list + [id] Overview / Holdings / Settings / targets
 │       ├── accounts/           # accounts + provider credentials form
 │       ├── assets/             # catalog, verdict badges, quarantine section
@@ -179,7 +179,8 @@ src/
 │   ├── ui/                     # shadcn/ui primitives
 │   ├── heatmap/                # heatmap, heatmap-card, balance-heatmap
 │   ├── portfolio/              # value header, holdings table, allocation bars/chart/targets
-│   ├── macro/                  # dashboard widgets + widget-card
+│   ├── dashboard/              # grid, widget frame, edit mode, widget registry
+│   ├── macro/                  # mock-backed widgets + widget-card (demo only)
 │   ├── prices/  rules/         # feature views
 │   ├── brand/                  # greedy-eye-logo (state: idle | wander)
 │   ├── style-provider.tsx      # ledger ↔ observatory axis
@@ -187,11 +188,13 @@ src/
 │
 ├── hooks/                      # use-portfolios, use-portfolio, use-holdings,
 │                               # use-accounts, use-assets, use-heatmap, use-prices,
-│                               # use-price-history, use-rules, use-pats, use-macro
+│                               # use-price-history, use-rules, use-pats, use-macro,
+│                               # use-dashboard-config
 │
 └── lib/
     ├── api/                    # client.ts, portfolio-api, assets-api, automation-api,
-    │                           # analytics-api, backend-types, adapters, price-map
+    │                           # analytics-api, settings-api, backend-types, adapters,
+    │                           # price-map
     ├── auth/                   # api.ts (psina), auth-context, protected-route, pat-api
     ├── config/                 # query-client, data-source, dashboard-widgets
     ├── mocks/                  # demo-mode data only
@@ -330,6 +333,7 @@ with exponential backoff (capped at 30s), refetch on window focus and on reconne
 | Prices, price history | 5 min | no |
 | Heatmap (portfolio, balance) | 60 s | no |
 | Macro widgets | 60 s | no |
+| Dashboard layout | never refetched | no |
 
 There is **no polling interval anywhere**: prices are refreshed server-side by the
 backend scheduler, and a focus-driven refetch is enough for a dashboard someone

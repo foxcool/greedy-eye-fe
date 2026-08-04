@@ -1,4 +1,3 @@
-export { MacroDashboard } from './macro-dashboard'
 export { WidgetCard, changeColor } from './widget-card'
 export { InterestRatesWidget } from './interest-rates-widget'
 export { MarketsWidget } from './markets-widget'

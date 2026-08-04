@@ -1,7 +1,7 @@
 'use client'
 
-import { MacroDashboard } from '@/components/macro'
+import { DashboardView } from '@/components/dashboard'
 
 export default function DashboardPage() {
-  return <MacroDashboard />
+  return <DashboardView />
 }

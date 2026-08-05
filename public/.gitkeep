@@ -1,0 +1,7 @@
+Next.js serves this directory as static files at the site root, and the
+production image copies it wholesale (build/Dockerfile). Emptying it
+removed it from git, and the image build then failed on a directory that
+exists in every working tree but in no fresh checkout.
+
+This file keeps the directory tracked. Delete it once something real
+lives here.

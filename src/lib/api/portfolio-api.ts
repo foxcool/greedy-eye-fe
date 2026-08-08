@@ -5,6 +5,20 @@ import type { Portfolio, Holding, Account, PortfolioValueResponse } from './back
 
 const RPC = (method: string) => `/eye.v1.PortfolioService/${method}`
 
+// Connect JSON renders a FieldMask as comma-separated camelCase paths, which is
+// exactly the shape of the keys a partial update already carries. Deriving the
+// mask from the payload is what makes it impossible to forget: without one the
+// backend used to write every field it knows, so an update that sent only
+// `excluded` zeroed the holding's amount and decimals and detached it from its
+// portfolio. The backend now rejects a mask-less update outright.
+function maskOf(data: object): string {
+  const paths = Object.entries(data)
+    .filter(([, value]) => value !== undefined)
+    .map(([key]) => key)
+  if (paths.length === 0) throw new Error('update requires at least one field')
+  return paths.join(',')
+}
+
 // --- Portfolios ---
 
 export async function listPortfolios(): Promise<Portfolio[]> {
@@ -26,6 +40,7 @@ export async function updatePortfolio(
 ): Promise<Portfolio> {
   return apiClient.post<Portfolio>(RPC('UpdatePortfolio'), {
     portfolio: { id, ...data },
+    updateMask: maskOf(data),
   })
 }
 
@@ -101,6 +116,7 @@ export async function updateHolding(
 ): Promise<Holding> {
   return apiClient.post<Holding>(RPC('UpdateHolding'), {
     holding: { id, ...data },
+    updateMask: maskOf(data),
   })
 }
 
@@ -146,6 +162,7 @@ export async function updateAccount(
 ): Promise<Account> {
   return apiClient.post<Account>(RPC('UpdateAccount'), {
     account: { id, ...input },
+    updateMask: maskOf(input),
   })
 }
 

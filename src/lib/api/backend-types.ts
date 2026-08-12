@@ -107,8 +107,68 @@ export interface Asset {
   identityVerdict?: IdentityVerdict
   // Verdict provenance: "heuristic" | "provider:<name>" | "curated" | "user:<id>".
   verdictSource?: string
+  // Last automated score in [0,1]. Absent for a user verdict and for an asset
+  // that has never been scored — which is not the same as a score of zero.
+  identityScore?: number
+  // Which signals fired and what each weighed, so a verdict can be explained
+  // rather than only announced. Empty until first scored.
+  identitySignals?: Record<string, number>
+  // When the current verdict was set.
+  verdictSetAt?: string
+  // Identities in external namespaces, and the situational risks on the asset.
+  //
+  // Both are POPULATED BY GetAsset ONLY. Read an empty array from listAssets as
+  // "not loaded", never as "this asset has none" — the backend says the same
+  // thing on both fields, because proto3 cannot tell the two apart.
+  externalRefs?: AssetExternalRef[]
+  riskFlags?: AssetRiskFlag[]
   createdAt: string
   updatedAt: string
+}
+
+// AssetExternalRef maps an asset to its identifier in an external namespace. On
+// a chain, identity is the contract and not the symbol — this is what keeps a
+// clone of a real ticker from merging into the real asset.
+export interface AssetExternalRef {
+  id: string
+  assetId: string
+  // Namespace: "onchain:<chain>", "coingecko", "cmc", broker ID spaces.
+  source: string
+  // Contract address, mint, coin id.
+  ref: string
+  // A manual link is terminal for auto-discovery.
+  origin: 'auto' | 'manual' | 'seed'
+  createdAt: string
+}
+
+// Risk-model axis 2: something true about a real asset's situation, as opposed
+// to whether it is what it claims to be (that is the identity axis).
+export type RiskFlagKind =
+  | 'exploit'
+  | 'depeg'
+  | 'frozen_transfers'
+  | 'deprecation'
+  | 'delisting'
+  | 'sanctions_freeze'
+
+// Derived action direction (axis 3).
+export type RiskActionHint = 'none' | 'hold' | 'exit_soon'
+
+// AssetRiskFlag never changes a total: it does not exclude a holding and does
+// not enter ValuationCoverage. It is disclosure, not arithmetic.
+export interface AssetRiskFlag {
+  id: string
+  assetId: string
+  kind: RiskFlagKind
+  // Free-form context: what happened, where it was reported.
+  note?: string
+  actionHint?: RiskActionHint
+  // When the flag must be revisited or ends. Required on write — a flag with no
+  // review date never expires and turns the axis into a graveyard.
+  reviewAt: string
+  // Who set it: "user:<id>".
+  setBy?: string
+  createdAt: string
 }
 
 export type RuleStatus =

@@ -1,25 +1,7 @@
 'use client'
 
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-
-function CopyButton({ value, label = 'Copy' }: { value: string; label?: string }) {
-  const [copied, setCopied] = useState(false)
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      onClick={async () => {
-        await navigator.clipboard.writeText(value)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1500)
-      }}
-    >
-      {copied ? 'Copied' : label}
-    </Button>
-  )
-}
+import { CopyButton } from '@/components/ui/copy-button'
 
 /**
  * One-time display of a freshly minted PAT plus a ready-to-paste MCP config.

@@ -1,5 +1,12 @@
 import { apiClient } from './client'
-import type { Asset, IdentityVerdict, StoredPrice } from './backend-types'
+import type {
+  Asset,
+  AssetRiskFlag,
+  IdentityVerdict,
+  RiskActionHint,
+  RiskFlagKind,
+  StoredPrice,
+} from './backend-types'
 
 const RPC = (method: string) => `/eye.v1.MarketDataService/${method}`
 
@@ -32,6 +39,13 @@ export async function listAssets(opts: ListAssetsOptions = {}): Promise<Asset[]>
     pageToken = res.nextPageToken
   }
   return all
+}
+
+// getAsset is the only RPC that loads external refs and risk flags. Every other
+// asset read returns them empty, and an empty list there means "not loaded" —
+// so a view that shows bindings or risk has to fetch through here.
+export async function getAsset(id: string): Promise<Asset> {
+  return apiClient.post<Asset>(RPC('GetAsset'), { id })
 }
 
 // setAssetVerdict records a human identity verdict; it is terminal — the
@@ -72,6 +86,27 @@ export async function updateAsset(
 
 export async function deleteAsset(id: string): Promise<void> {
   await apiClient.post(RPC('DeleteAsset'), { id })
+}
+
+// --- Risk flags (identity axis 2) ---
+
+export interface AddRiskFlagInput {
+  assetId: string
+  kind: RiskFlagKind
+  note?: string
+  actionHint?: RiskActionHint
+  // REQUIRED, ISO datetime. The backend rejects a flag without it: a risk that
+  // never expires stops being read at all.
+  reviewAt: string
+}
+
+export async function addAssetRiskFlag(input: AddRiskFlagInput): Promise<AssetRiskFlag> {
+  return apiClient.post<AssetRiskFlag>(RPC('AddAssetRiskFlag'), input)
+}
+
+// Flags accumulate rather than replace, so removing one is its own call.
+export async function deleteAssetRiskFlag(assetId: string, id: string): Promise<void> {
+  await apiClient.post(RPC('DeleteAssetRiskFlag'), { assetId, id })
 }
 
 // --- Prices ---

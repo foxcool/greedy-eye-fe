@@ -28,7 +28,14 @@ export function useUpdateHolding() {
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string } & Parameters<typeof updateHolding>[1]) =>
       updateHolding(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['holdings'] }),
+    // Also the portfolio summary: excluding a position changes the total and the
+    // coverage block that explains it. Refreshing only ['holdings'] leaves the
+    // toggle and the sentence beside it disagreeing until something else
+    // refetches — the row dims while the page still says why it is counted.
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['holdings'] })
+      qc.invalidateQueries({ queryKey: ['portfolio'] })
+    },
   })
 }
 

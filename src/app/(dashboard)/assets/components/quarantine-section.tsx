@@ -10,6 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useSetAssetVerdict } from '@/hooks/use-assets'
+import { useAuth } from '@/lib/auth/auth-context'
 import { contractRef } from '@/lib/assets/links'
 import type { Asset } from '@/lib/api/backend-types'
 import { ContractLink } from './contract-link'
@@ -23,6 +24,10 @@ const FLAGGED = new Set(['scam', 'impersonation', 'suspect'])
 // false positive is reprieved or a scam is confirmed.
 export function QuarantineSection({ assets }: { assets: Asset[] }) {
   const setVerdict = useSetAssetVerdict()
+  // SetAssetVerdict is admin-only on the backend. Showing the buttons to
+  // everyone offers a decision the caller is not allowed to make, and the only
+  // feedback is an error toast.
+  const { isAdmin } = useAuth()
 
   const flagged = assets.filter((a) => a.identityVerdict && FLAGGED.has(a.identityVerdict))
   if (flagged.length === 0) return null
@@ -64,24 +69,28 @@ export function QuarantineSection({ assets }: { assets: Asset[] }) {
                   <ContractLink contract={contract} />
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={setVerdict.isPending}
-                      onClick={() => setVerdict.mutate({ id: a.id, verdict: 'legit' })}
-                    >
-                      Not a scam
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      disabled={setVerdict.isPending}
-                      onClick={() => setVerdict.mutate({ id: a.id, verdict: 'scam' })}
-                    >
-                      Confirm scam
-                    </Button>
-                  </div>
+                  {isAdmin ? (
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={setVerdict.isPending}
+                        onClick={() => setVerdict.mutate({ id: a.id, verdict: 'legit' })}
+                      >
+                        Not a scam
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={setVerdict.isPending}
+                        onClick={() => setVerdict.mutate({ id: a.id, verdict: 'scam' })}
+                      >
+                        Confirm scam
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">admin review</span>
+                  )}
                 </TableCell>
               </TableRow>
             )

@@ -55,6 +55,16 @@ export interface Holding {
   // Output-only provenance; stamped by the server on create.
   source?: ProvenanceSource
   importId?: string
+  // Network this amount sits on ("eth", "base", "solana"). Empty means the
+  // position is not chain-scoped (an exchange balance, a manual entry) — it
+  // never means Ethereum. Sync writes one row per (account, asset, chain), so
+  // the same token held on three chains is three holdings, not one sum.
+  chain?: string
+  // How soon this amount can be spent: "liquid", "staked", "unbonding",
+  // "locked", "vesting". Empty means the source could not partition the
+  // balance — it is NOT a synonym for liquid, and a runway figure must not
+  // read it as one.
+  liquidity?: string
   createdAt: string
   updatedAt: string
 }
@@ -208,6 +218,11 @@ export interface StoredPrice {
   low?: string
   close?: string
   volume?: string
+  // Market capitalisation observed with this quote, scaled by `decimals` like
+  // the amounts above. Absent means the source reported none — which is not the
+  // same statement as a capitalisation of zero. It travels with the price, not
+  // with the asset: a quote is only as good as the market standing behind it.
+  marketCap?: string
   timestamp: string
 }
 

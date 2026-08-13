@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -19,6 +20,7 @@ import { usePrices, coingeckoIdBySymbol } from '@/hooks/use-prices'
 import { formatCurrency } from '@/lib/mocks'
 import { ContractLink } from './contract-link'
 import { coingeckoUrl, contractRef, contractUrl } from '@/lib/assets/links'
+import { USE_BACKEND } from '@/lib/config/data-source'
 import type { Asset } from '@/lib/api/backend-types'
 
 const ASSET_TYPE_LABELS: Record<string, string> = {
@@ -132,7 +134,20 @@ export function AssetList() {
                     <VerdictBadge verdict={a.identityVerdict} source={a.verdictSource} />
                   </div>
                 </TableCell>
-                <TableCell>{a.name}</TableCell>
+                {/* The name opens the asset card; the symbol beside it already
+                    links outward. Full entry-point work is a separate task. */}
+                <TableCell>
+                  {USE_BACKEND ? (
+                    <Link
+                      href={`/assets/${a.id}`}
+                      className="underline decoration-dotted underline-offset-2 hover:text-primary"
+                    >
+                      {a.name}
+                    </Link>
+                  ) : (
+                    a.name
+                  )}
+                </TableCell>
                 <TableCell className="text-muted-foreground text-sm">
                   {ASSET_TYPE_LABELS[a.type] ?? a.type}
                 </TableCell>

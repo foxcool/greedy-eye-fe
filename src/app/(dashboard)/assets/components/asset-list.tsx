@@ -17,6 +17,8 @@ import { VerdictBadge } from './verdict-badge'
 import { useAssets, useCreateAsset, useUpdateAsset, useDeleteAsset } from '@/hooks/use-assets'
 import { usePrices, coingeckoIdBySymbol } from '@/hooks/use-prices'
 import { formatCurrency } from '@/lib/mocks'
+import { ContractLink } from './contract-link'
+import { coingeckoUrl, contractRef, contractUrl } from '@/lib/assets/links'
 import type { Asset } from '@/lib/api/backend-types'
 
 const ASSET_TYPE_LABELS: Record<string, string> = {
@@ -28,19 +30,19 @@ const ASSET_TYPE_LABELS: Record<string, string> = {
   ASSET_TYPE_FUND: 'Fund',
 }
 
-function contractAddress(asset: Asset): string | undefined {
-  return asset.tags
-    ?.find((t) => t.startsWith('contract:'))
-    ?.slice('contract:'.length)
-}
-
-/** External info page: CoinGecko for known tokens, Etherscan for contracts. */
+/**
+ * External info page: CoinGecko for known tokens, the chain's explorer for
+ * contracts.
+ *
+ * The CoinGecko id still comes from `coingeckoIdBySymbol`, which is derived from
+ * mock data and covers about fifteen demo tokens. The real id is an external ref
+ * and arrives with GetAsset, which this list does not call — replacing it is the
+ * detail page's job, not a rename here.
+ */
 function externalUrl(asset: Asset): string | undefined {
   const coingeckoId = asset.symbol && coingeckoIdBySymbol[asset.symbol.toUpperCase()]
-  if (coingeckoId) return `https://www.coingecko.com/en/coins/${coingeckoId}`
-  const contract = contractAddress(asset)
-  if (contract) return `https://etherscan.io/token/${contract}`
-  return undefined
+  if (coingeckoId) return coingeckoUrl(coingeckoId)
+  return contractUrl(contractRef(asset))
 }
 
 export function AssetList() {
@@ -110,7 +112,7 @@ export function AssetList() {
               // ticker of the asset it imitates, and a symbol lookup would
               // print the real one's price on the impostor's row.
               const price = priceResult?.prices[a.id]?.price
-              const contract = contractAddress(a)
+              const contract = contractRef(a)
               return (
               <TableRow key={a.id} title={a.id}>
                 <TableCell className="font-medium">
@@ -138,18 +140,7 @@ export function AssetList() {
                   {price != null ? formatCurrency(price) : '—'}
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm font-mono">
-                  {contract ? (
-                    <a
-                      href={`https://etherscan.io/token/${contract}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-primary"
-                    >
-                      {contract.slice(0, 6)}…{contract.slice(-4)}
-                    </a>
-                  ) : (
-                    '—'
-                  )}
+                  <ContractLink contract={contract} />
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">

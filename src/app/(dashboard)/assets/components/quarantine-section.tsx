@@ -10,16 +10,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useSetAssetVerdict } from '@/hooks/use-assets'
+import { contractRef } from '@/lib/assets/links'
 import type { Asset } from '@/lib/api/backend-types'
+import { ContractLink } from './contract-link'
 import { VerdictBadge } from './verdict-badge'
 
 const FLAGGED = new Set(['scam', 'impersonation', 'suspect'])
-
-function contractAddress(asset: Asset): string | undefined {
-  return asset.tags
-    ?.find((t) => t.startsWith('contract:'))
-    ?.slice('contract:'.length)
-}
 
 // QuarantineSection surfaces the assets the scorer flagged for review. A verdict
 // set here is a human decision and terminal — the scorer never overwrites it.
@@ -54,7 +50,7 @@ export function QuarantineSection({ assets }: { assets: Asset[] }) {
         </TableHeader>
         <TableBody>
           {flagged.map((a) => {
-            const contract = contractAddress(a)
+            const contract = contractRef(a)
             return (
               <TableRow key={a.id} title={a.id}>
                 <TableCell className="font-medium">{a.symbol ?? '—'}</TableCell>
@@ -65,18 +61,7 @@ export function QuarantineSection({ assets }: { assets: Asset[] }) {
                   <VerdictBadge verdict={a.identityVerdict} source={a.verdictSource} />
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm font-mono">
-                  {contract ? (
-                    <a
-                      href={`https://etherscan.io/token/${contract}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-primary"
-                    >
-                      {contract.slice(0, 6)}…{contract.slice(-4)}
-                    </a>
-                  ) : (
-                    '—'
-                  )}
+                  <ContractLink contract={contract} />
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">

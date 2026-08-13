@@ -15,6 +15,7 @@ import { useHoldingsQuery, useCreateHolding, useUpdateHolding, useDeleteHolding 
 import { useAccounts } from '@/hooks/use-accounts'
 import { useAssets } from '@/hooks/use-assets'
 import { holdingToDecimal } from '@/lib/api/backend-types'
+import { truncateAddress } from '@/lib/assets/links'
 import type { Account, Holding } from '@/lib/api/backend-types'
 
 interface HoldingsManagerProps {
@@ -61,7 +62,7 @@ function AccountGroup({
           </span>
           {account.data?.address && (
             <span className="text-xs text-muted-foreground font-mono truncate max-w-[14ch]" title={account.data.address}>
-              {account.data.address.slice(0, 6)}…{account.data.address.slice(-4)}
+              {truncateAddress(account.data.address)}
             </span>
           )}
         </div>

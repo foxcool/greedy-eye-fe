@@ -5,6 +5,7 @@ import {
   deleteAsset,
   deleteAssetRiskFlag,
   getAsset,
+  getLatestPrice,
   listAssets,
   setAssetVerdict,
   updateAsset,
@@ -28,6 +29,24 @@ export function useAsset(id: string | undefined) {
     queryKey: ['asset', id],
     queryFn: () => getAsset(id!),
     enabled: Boolean(id),
+  })
+}
+
+// useLatestPrice reads the stored quote row itself, rather than the price map
+// derived from heatmaps. The heatmap draws no node for a holding it could not
+// value, so the map is empty for exactly the assets whose page needs to explain
+// why — and an empty price beside a real position reads as "flat", not "absent".
+//
+// retry is off on purpose: a missing quote is the normal answer here, not a
+// transient failure, and the default three attempts with backoff spend seconds
+// re-asking for a row nobody stored.
+export function useLatestPrice(assetId: string | undefined, baseAssetId = 'usd') {
+  return useQuery({
+    queryKey: ['price', 'latest', assetId, baseAssetId],
+    queryFn: () => getLatestPrice(assetId!, baseAssetId),
+    enabled: Boolean(assetId),
+    retry: false,
+    staleTime: 5 * 60 * 1000,
   })
 }
 

@@ -11,11 +11,16 @@ import {
 } from '@/components/ui/table'
 import { useAccounts } from '@/hooks/use-accounts'
 import { useHoldingsQuery, useUpdateHolding } from '@/hooks/use-holdings'
-import { useLatestPrice } from '@/hooks/use-assets'
+import { useLatestPrice, usePricingStatus } from '@/hooks/use-assets'
 import { usePortfolio } from '@/hooks/use-portfolio'
 import { holdingToDecimal, type Asset } from '@/lib/api/backend-types'
 import { truncateAddress } from '@/lib/assets/links'
-import { holdingStatus, statusExplanation, statusLabel } from '@/lib/assets/valuation-status'
+import {
+  holdingStatus,
+  pricingLookup,
+  statusExplanation,
+  statusLabel,
+} from '@/lib/assets/valuation-status'
 import { formatCurrency, formatQuantity } from '@/lib/mocks'
 import { EmptyPanel, Section } from './section'
 
@@ -31,6 +36,10 @@ export function HoldingsSection({ asset }: { asset: Asset }) {
   const { data: accounts = [] } = useAccounts()
   const { data: price } = useLatestPrice(asset.id)
   const { data: summary } = usePortfolio()
+  // The coverage list stops at 50 unpriced holdings while counting them all, so
+  // this page's asset is usually outside it. Asked per asset, the same evidence
+  // is not capped.
+  const { data: pricingStatuses, isSuccess: pricingResolved } = usePricingStatus([asset.id])
   const update = useUpdateHolding()
 
   const accountById = new Map(accounts.map((a) => [a.id, a]))
@@ -40,6 +49,8 @@ export function HoldingsSection({ asset }: { asset: Asset }) {
   // the coverage disclosure list.
   const assetIsPriced =
     summary?.holdings.find((h) => h.assetId === asset.id)?.unpriced === false
+
+  const pricing = pricingLookup(asset.id, pricingStatuses, pricingResolved)
 
   // One asset cannot honestly have two scales. When it does, one of these rows
   // was written by a different path and the quantities are not comparable.
@@ -51,7 +62,7 @@ export function HoldingsSection({ asset }: { asset: Asset }) {
   const explanations = [
     ...new Set(
       holdings.map((h) =>
-        statusExplanation(holdingStatus(h, asset, summary?.coverage, assetIsPriced))
+        statusExplanation(holdingStatus(h, asset, summary?.coverage, assetIsPriced, pricing))
       )
     ),
   ]
@@ -83,7 +94,7 @@ export function HoldingsSection({ asset }: { asset: Asset }) {
               {holdings.map((h) => {
                 const account = accountById.get(h.accountId)
                 const qty = holdingToDecimal(h.amount, h.decimals)
-                const status = holdingStatus(h, asset, summary?.coverage, assetIsPriced)
+                const status = holdingStatus(h, asset, summary?.coverage, assetIsPriced, pricing)
                 const counted = status.kind === 'counted'
                 return (
                   <TableRow key={h.id} className={h.excluded ? 'opacity-40' : undefined}>

@@ -6,6 +6,7 @@ import {
   deleteAssetRiskFlag,
   getAsset,
   getLatestPrice,
+  getPricingStatus,
   listAssets,
   setAssetVerdict,
   updateAsset,
@@ -45,6 +46,26 @@ export function useLatestPrice(assetId: string | undefined, baseAssetId = 'usd')
     queryKey: ['price', 'latest', assetId, baseAssetId],
     queryFn: () => getLatestPrice(assetId!, baseAssetId),
     enabled: Boolean(assetId),
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+// usePricingStatus reports what asking these assets' price sources has produced.
+// The valuation coverage block answers the same question but lists only the
+// first 50 unpriced holdings, so a page that has to explain ONE position cannot
+// rely on being in that sample.
+//
+// retry is off for the same reason as useLatestPrice: for an asset nobody has
+// asked about, an absent record is the answer, not a transient failure.
+export function usePricingStatus(assetIds: string[]) {
+  // Sorted so that the same set of assets is one cache entry regardless of the
+  // order the caller's list happened to arrive in.
+  const key = [...assetIds].sort()
+  return useQuery({
+    queryKey: ['pricing-status', key],
+    queryFn: () => getPricingStatus(key),
+    enabled: key.length > 0,
     retry: false,
     staleTime: 5 * 60 * 1000,
   })

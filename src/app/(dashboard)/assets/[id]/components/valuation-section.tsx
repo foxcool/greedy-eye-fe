@@ -1,7 +1,8 @@
 'use client'
 
-import { useLatestPrice } from '@/hooks/use-assets'
+import { useLatestPrice, usePricingStatus } from '@/hooks/use-assets'
 import { holdingToDecimal, type Asset } from '@/lib/api/backend-types'
+import { pricingEvidence, pricingLookup } from '@/lib/assets/valuation-status'
 import { formatCurrency } from '@/lib/mocks'
 import { EmptyPanel, Facts, Row, Section } from './section'
 
@@ -12,6 +13,10 @@ import { EmptyPanel, Facts, Row, Section } from './section'
  */
 export function ValuationSection({ asset }: { asset: Asset }) {
   const { data: price, isLoading: priceLoading } = useLatestPrice(asset.id)
+  // An absent quote is where a reader most needs the evidence behind it: asked
+  // and silent, or never asked at all, are different answers to "why no price".
+  const { data: pricingStatuses, isSuccess: pricingResolved } = usePricingStatus([asset.id])
+  const evidence = pricingEvidence(pricingLookup(asset.id, pricingStatuses, pricingResolved))
 
   const dec = (raw: string | undefined) =>
     raw === undefined || price === undefined ? undefined : holdingToDecimal(raw, price.decimals)
@@ -29,6 +34,8 @@ export function ValuationSection({ asset }: { asset: Asset }) {
       ) : !price ? (
         <EmptyPanel>
           No stored quote for this asset. That is missing data, not a price of zero.
+          {/* EmptyPanel already renders a <p>, so this is a block span. */}
+          {evidence && <span className="mt-2 block">{evidence}</span>}
         </EmptyPanel>
       ) : (
         <Facts>

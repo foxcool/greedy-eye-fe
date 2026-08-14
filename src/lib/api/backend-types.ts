@@ -255,8 +255,30 @@ export interface UnpricedHolding {
   holdingId?: string
   assetId?: string
   symbol?: string
-  // UNPRICED_REASON_NO_QUOTE | UNPRICED_REASON_THIN_MARKET
+  // UNPRICED_REASON_NO_QUOTE | UNPRICED_REASON_THIN_MARKET | UNPRICED_REASON_NEVER_PRICED
   reason?: string
+  // Since when the sources have been asked without answering. Set only with
+  // NEVER_PRICED, where it turns "no price" into "no price for eleven days".
+  askedSince?: string
+}
+
+// What asking this asset's price sources has produced. Its caller is a
+// disclosure that names a reason per position, so the shape is deliberately
+// evidence — who was asked, since when — rather than a verdict.
+//
+// An asset nobody has ever asked about is ABSENT from the response, not
+// zero-filled: an empty record would read as "asked, nothing came back", which
+// is the opposite statement.
+export interface AssetPricingStatus {
+  assetId: string
+  // True when some source has answered at some point. Such an asset has a price
+  // row, so a valuation that still could not use it failed for another reason.
+  everPriced?: boolean
+  firstAskedAt?: string
+  lastAskedAt?: string
+  // Four sources silent for a week is a different statement from one source
+  // silent for a week.
+  sourcesAsked?: number
 }
 
 // --- Analytics (heatmap) ---

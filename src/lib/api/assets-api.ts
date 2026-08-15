@@ -1,6 +1,7 @@
 import { apiClient } from './client'
 import type {
   Asset,
+  AssetPricingStatus,
   AssetRiskFlag,
   IdentityVerdict,
   RiskActionHint,
@@ -113,6 +114,24 @@ export async function deleteAssetRiskFlag(assetId: string, id: string): Promise<
 
 export async function getLatestPrice(assetId: string, baseAssetId = 'usd'): Promise<StoredPrice> {
   return apiClient.post<StoredPrice>(RPC('GetLatestPrice'), { assetId, baseAssetId })
+}
+
+// getPricingStatus answers "what has asking about this asset produced" without
+// the cap the valuation coverage list carries: the coverage report lists at most
+// 50 unpriced holdings while counting them all, so on a synced wallet a given
+// position is usually outside the sample and its reason goes undisclosed. This
+// asks about the assets in hand instead.
+//
+// Assets never asked about come back absent, not empty — the caller has to read
+// a missing entry as "no source has ever been asked", which is why this returns
+// the array as given rather than filling gaps.
+export async function getPricingStatus(assetIds: string[]): Promise<AssetPricingStatus[]> {
+  if (assetIds.length === 0) return []
+  const res = await apiClient.post<{ statuses?: AssetPricingStatus[] }>(
+    RPC('GetPricingStatus'),
+    { assetIds }
+  )
+  return res.statuses ?? []
 }
 
 export async function fetchExternalPrices(assetIds: string[]): Promise<{

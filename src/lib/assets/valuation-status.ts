@@ -1,4 +1,10 @@
-import type { Asset, Holding, IdentityVerdict, ValuationCoverage } from '@/lib/api/backend-types'
+import type {
+  Asset,
+  AssetPricingStatus,
+  Holding,
+  IdentityVerdict,
+  ValuationCoverage,
+} from '@/lib/api/backend-types'
 
 /**
  * Why a position is, or is not, part of the total.
@@ -7,7 +13,9 @@ import type { Asset, Holding, IdentityVerdict, ValuationCoverage } from '@/lib/a
  * they are statements about three different things:
  *
  * - `unpriced` is about the DATA — no quote exists, or the quote found has no
- *   market behind it
+ *   market behind it. `never-asked` and `priced-unusable` are the same statement
+ *   made from the pricing record instead of the coverage list, for the positions
+ *   that list is too short to reach
  * - `excluded-verdict` is about the ASSET'S IDENTITY — it is not what it claims
  *   to be, and sync quarantines it
  * - `excluded-manual` is the USER'S accounting decision
@@ -22,11 +30,51 @@ export type ValuationStatus =
   | { kind: 'counted' }
   | { kind: 'excluded-verdict'; verdict: IdentityVerdict }
   | { kind: 'excluded-manual' }
-  | { kind: 'unpriced'; reason: UnpricedReason }
+  | { kind: 'unpriced'; reason: UnpricedReason; askedSince?: string; sourcesAsked?: number }
+  // A quote for this asset exists and the valuation still could not use it. The
+  // backend does not record WHICH of the two causes applied to this position, so
+  // neither does this state.
+  | { kind: 'priced-unusable'; lastAskedAt?: string }
+  // No source has ever been asked about this asset — a gap in coverage, not a
+  // statement about the market.
+  | { kind: 'never-asked' }
   | { kind: 'undisclosed'; disclosed: number; total: number }
   | { kind: 'unknown' }
 
 export type UnpricedReason = 'NO_QUOTE' | 'THIN_MARKET' | 'NEVER_PRICED' | 'OTHER'
+
+/**
+ * What is known about asking this asset's price sources, at the moment the
+ * status is computed.
+ *
+ * Three states, not two, because "the lookup has not answered yet" and "the
+ * backend holds no record" are different facts and only one of them is a
+ * statement about the asset. Flattening them into `undefined` is how a loading
+ * spinner turns into an assertion.
+ */
+export type PricingLookup =
+  | { state: 'pending' }
+  | { state: 'known'; status: AssetPricingStatus }
+  | { state: 'never-asked' }
+
+/**
+ * Read one asset out of a batched GetPricingStatus response.
+ *
+ * `resolved` must be the query's success, not merely "data is not undefined":
+ * a failed request leaves the answer unknown, and reporting that as
+ * `never-asked` would state, on no evidence, that nobody ever looked.
+ */
+export function pricingLookup(
+  assetId: string,
+  statuses: AssetPricingStatus[] | undefined,
+  resolved: boolean
+): PricingLookup {
+  if (!resolved) return { state: 'pending' }
+  const status = statuses?.find((s) => s.assetId === assetId)
+  // Absent means never asked: the backend omits such assets rather than
+  // zero-filling them, precisely so this distinction survives the wire.
+  return status ? { state: 'known', status } : { state: 'never-asked' }
+}
 
 /** Verdicts that make sync quarantine every holding of the asset. */
 const QUARANTINE_VERDICTS: IdentityVerdict[] = ['scam', 'impersonation', 'suspect']
@@ -53,12 +101,18 @@ function parseReason(raw: string | undefined): UnpricedReason {
  * `assetIsPriced` comes from the portfolio summary's own view of this asset —
  * it is a reliable POSITIVE signal because the heatmap's node list is not
  * capped, unlike the coverage disclosure list.
+ *
+ * `pricing` is what rescues the capped case: the coverage list stops at 50 while
+ * counting every unpriced holding, so on a synced wallet a position is usually
+ * outside the sample. GetPricingStatus answers the same question per asset, and
+ * without it the honest thing left to say is that the reason was not disclosed.
  */
 export function holdingStatus(
   holding: Holding,
   asset: Asset | undefined,
   coverage: ValuationCoverage | undefined,
-  assetIsPriced: boolean
+  assetIsPriced: boolean,
+  pricing: PricingLookup = { state: 'pending' }
 ): ValuationStatus {
   // Exclusion is decided BEFORE any question about price, because the backend
   // decides it in that order too: CalculatePortfolioValue counts an excluded
@@ -76,7 +130,17 @@ export function holdingStatus(
   const entry = coverage?.unpriced?.find((u) =>
     u.holdingId ? u.holdingId === holding.id : u.assetId === holding.assetId
   )
-  if (entry) return { kind: 'unpriced', reason: parseReason(entry.reason) }
+  if (entry) {
+    return {
+      kind: 'unpriced',
+      reason: parseReason(entry.reason),
+      askedSince: entry.askedSince,
+      // Only the pricing record counts sources; the coverage entry carries the
+      // date alone. Taken from there when it is loaded so that the sentence does
+      // not get thinner for being inside the sample.
+      sourcesAsked: pricing.state === 'known' ? pricing.status.sourcesAsked : undefined,
+    }
+  }
 
   if (assetIsPriced) return { kind: 'counted' }
 
@@ -85,10 +149,27 @@ export function holdingStatus(
   // reporting it as `counted` would put a position in the total that is not in
   // the total.
   if (coverage?.unpricedTruncated) {
-    return {
-      kind: 'undisclosed',
-      disclosed: coverage.unpriced?.length ?? 0,
-      total: coverage.unpricedCount ?? 0,
+    switch (pricing.state) {
+      case 'known':
+        // A stored price the valuation did not use failed for a reason the
+        // backend records per ASSET, not per holding: no path to the display
+        // currency, or a market too thin to sell into. Both stay named.
+        return pricing.status.everPriced
+          ? { kind: 'priced-unusable', lastAskedAt: pricing.status.lastAskedAt }
+          : {
+              kind: 'unpriced',
+              reason: 'NEVER_PRICED',
+              askedSince: pricing.status.firstAskedAt,
+              sourcesAsked: pricing.status.sourcesAsked,
+            }
+      case 'never-asked':
+        return { kind: 'never-asked' }
+      case 'pending':
+        return {
+          kind: 'undisclosed',
+          disclosed: coverage.unpriced?.length ?? 0,
+          total: coverage.unpricedCount ?? 0,
+        }
     }
   }
 
@@ -105,12 +186,65 @@ export function statusLabel(status: ValuationStatus): string {
     case 'excluded-manual':
       return 'Excluded by you'
     case 'unpriced':
-      return 'Not valued'
+    case 'priced-unusable':
+    case 'never-asked':
     case 'undisclosed':
       return 'Not valued'
     case 'unknown':
       return 'Unknown'
   }
+}
+
+/**
+ * A date as evidence, not as decoration: "since 3 August" is what turns "no
+ * price" into "no price for eleven days".
+ */
+function since(iso: string | undefined): string | undefined {
+  if (!iso) return undefined
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? undefined : d.toLocaleDateString()
+}
+
+/**
+ * The same evidence stated about the ASSET rather than about a position, for a
+ * page that has no quote to show and owes the reader a reason.
+ *
+ * Undefined while the lookup is pending: an empty panel that says nothing is
+ * honest, one that guesses is not.
+ */
+export function pricingEvidence(pricing: PricingLookup): string | undefined {
+  switch (pricing.state) {
+    case 'pending':
+      return undefined
+    case 'never-asked':
+      return 'No price source has ever been asked about this asset. Nothing here is a statement about the market — it is a gap in coverage.'
+    case 'known': {
+      const { everPriced, firstAskedAt, lastAskedAt, sourcesAsked } = pricing.status
+      if (everPriced) {
+        const last = since(lastAskedAt)
+        return `Sources have answered for this asset before, so a price row exists — just not one this page could read against your display currency.${
+          last ? ` Last asked ${last}.` : ''
+        }`
+      }
+      return `Every source available has been asked and none has ever answered.${evidence(
+        firstAskedAt,
+        sourcesAsked
+      )} That is evidence of silence, not a delisting verdict.`
+    }
+  }
+}
+
+/** "asked since 3 August across 4 sources", as much of it as is known. */
+function evidence(askedSince: string | undefined, sourcesAsked: number | undefined): string {
+  const date = since(askedSince)
+  const sources =
+    sourcesAsked === undefined || sourcesAsked === 0
+      ? undefined
+      : `${sourcesAsked} source${sourcesAsked === 1 ? '' : 's'}`
+  if (date && sources) return ` Asked since ${date}, across ${sources}.`
+  if (date) return ` Asked since ${date}.`
+  if (sources) return ` Asked across ${sources}.`
+  return ''
 }
 
 /**
@@ -138,12 +272,20 @@ export function statusExplanation(status: ValuationStatus): string {
         case 'THIN_MARKET':
           return 'Not valued: a quote exists, but the market behind it is too thin to sell this position at that price. The quote is real; the money is not.'
         case 'NEVER_PRICED':
-          return 'Not valued: every source available has been asked and none has ever answered. That is evidence of silence, not a delisting verdict.'
+          return `Not valued: every source available has been asked and none has ever answered.${evidence(status.askedSince, status.sourcesAsked)} That is evidence of silence, not a delisting verdict.`
         case 'OTHER':
           return 'Not valued. The reason given is one this page does not recognise.'
       }
+    case 'priced-unusable': {
+      const last = since(status.lastAskedAt)
+      return `Not valued, though a price for this asset has been stored${
+        last ? ` — sources last asked ${last}` : ''
+      }. The valuation could not use that quote: either there is no path from it to your display currency, or the market behind it is too thin to sell into. Which of the two is not recorded per position.`
+    }
+    case 'never-asked':
+      return 'Not valued: no price source has ever been asked about this asset. That is a gap in coverage — nothing here is a statement about the market.'
     case 'undisclosed':
-      return `Not valued. The coverage report listed ${status.disclosed} of ${status.total} unvalued positions and this one is not in that sample, so its reason was not disclosed.`
+      return `Not valued. The coverage report listed ${status.disclosed} of ${status.total} unvalued positions and this one is not in that sample; its reason is still loading.`
     case 'unknown':
       return 'Cannot say — the valuation report did not load.'
   }

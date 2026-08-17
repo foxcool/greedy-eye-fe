@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -21,8 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { Account, AccountCapability, AccountType } from '@/lib/api/backend-types'
+import type { Account, AccountCapability, AccountType, Provider } from '@/lib/api/backend-types'
 import { usePortfolios } from '@/hooks/use-portfolios'
+import { useProviders } from '@/hooks/use-providers'
+import { mergeAccountData } from '@/lib/accounts/account-data'
 import { useAuth } from '@/lib/auth/auth-context'
 
 const ACCOUNT_TYPES: { value: AccountType; label: string; hint: string }[] = [
@@ -59,6 +62,19 @@ const CAPABILITY_LABELS: Record<AccountCapability, string> = {
 // Account types whose credentials are a provider API key pair.
 const KEYED_TYPES: AccountType[] = ['ACCOUNT_TYPE_EXCHANGE', 'ACCOUNT_TYPE_BROKER', 'ACCOUNT_TYPE_SERVICE']
 
+// Sentinel for "no provider chosen": a Select cannot hold an empty string.
+const NO_PROVIDER = '__none__'
+// Sentinel for a slug the catalogue does not list — an older backend, or an
+// account created before this provider existed. It stays editable by hand so
+// the catalogue can never make an existing account uneditable.
+const CUSTOM_PROVIDER = '__custom__'
+// Sentinel for the provider's free keyed plan, whose real value is "".
+const DEFAULT_TIER = '__default__'
+
+// data keys this form owns. Everything else in accounts.data is carried through
+// untouched on save — see mergeAccountData.
+const BUDGET_KEYS = ['tier', 'quota', 'period', 'rps', 'burst'] as const
+
 const schema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   type: z.enum([
@@ -76,6 +92,13 @@ const schema = z.object({
   provider: z.string().max(50).optional(),
   apiKey: z.string().max(500).optional(),
   apiSecret: z.string().max(500).optional(),
+  tier: z.string().max(50).optional(),
+  quota: z.string().max(20).optional(),
+  period: z.string().max(10).optional(),
+  rps: z.string().max(20).optional(),
+  burst: z.string().max(20).optional(),
+  // Extra data keys the chosen provider declares (e.g. root_ca), keyed by name.
+  extras: z.record(z.string(), z.string()).optional(),
   capabilities: z.array(z.enum(['portfolio_sync', 'trading', 'market_data', 'onchain_lookup', 'manual_positions'] as const)),
   // Constrained to SYSTEM_SCOPEABLE by the UI; typed wide to match Account.
   systemScopes: z.array(z.enum(['portfolio_sync', 'trading', 'market_data', 'onchain_lookup', 'manual_positions'] as const)),
@@ -85,6 +108,21 @@ const schema = z.object({
   }
   if (KEYED_TYPES.includes(values.type) && values.apiKey && !values.provider) {
     ctx.addIssue({ code: 'custom', path: ['provider'], message: 'Provider is required when an API key is set' })
+  }
+  // A quota with no period never resets: the backend drops it with a warning
+  // in a log nobody reads, and the provider goes quiet once the allowance is
+  // spent. Caught here, where the person who typed it is still looking.
+  if (values.quota && !values.period) {
+    ctx.addIssue({ code: 'custom', path: ['period'], message: 'A quota needs a period, or it never resets' })
+  }
+  for (const key of ['quota', 'burst'] as const) {
+    const raw = values[key]
+    if (raw && !/^\d+$/.test(raw.trim())) {
+      ctx.addIssue({ code: 'custom', path: [key], message: 'Whole number, or leave blank' })
+    }
+  }
+  if (values.rps && !/^\d+(\.\d+)?$/.test(values.rps.trim())) {
+    ctx.addIssue({ code: 'custom', path: ['rps'], message: 'Number, or leave blank' })
   }
 })
 
@@ -110,25 +148,43 @@ interface AccountFormProps {
 }
 
 function initialValues(initial?: Account): FormValues {
+  const data = initial?.data ?? {}
   return {
     name: initial?.name ?? '',
     type: (initial?.type as FormValues['type'] | undefined) ?? 'ACCOUNT_TYPE_WALLET',
     description: initial?.description ?? '',
     portfolioId: initial?.portfolioId ?? '',
-    address: initial?.data?.address ?? '',
-    chain: initial?.data?.chain ?? '',
-    provider: initial?.data?.provider ?? '',
+    address: data.address ?? '',
+    chain: data.chain ?? '',
+    provider: data.provider ?? '',
     // Masked values ("••••1a2b") round-trip as is: the backend keeps the
     // stored secret when it sees the mask back.
-    apiKey: initial?.data?.api_key ?? '',
-    apiSecret: initial?.data?.api_secret ?? '',
+    apiKey: data.api_key ?? '',
+    apiSecret: data.api_secret ?? '',
+    tier: data.tier ?? '',
+    quota: data.quota ?? '',
+    period: data.period ?? '',
+    rps: data.rps ?? '',
+    burst: data.burst ?? '',
+    extras: {},
     capabilities: initial?.capabilities ?? [],
     systemScopes: initial?.systemScopes ?? [],
   }
 }
 
+// tierLabel says what picking a plan costs, next to its name. A name alone is a
+// choice made blind: the numbers are what the limiter will actually apply.
+function tierLabel(tier: { name: string; rps?: number; burst?: number; quota?: number; quotaPeriod?: string }): string {
+  const name = tier.name === '' ? 'Free (keyed)' : tier.name
+  const parts: string[] = []
+  if (tier.rps) parts.push(`${tier.rps} rps`)
+  if (tier.quota) parts.push(`${tier.quota.toLocaleString()}/${tier.quotaPeriod || 'period'}`)
+  return parts.length > 0 ? `${name} — ${parts.join(', ')}` : name
+}
+
 export function AccountForm({ open, onOpenChange, onSubmit, isLoading, initial }: AccountFormProps) {
   const { data: portfolios = [] } = usePortfolios()
+  const { data: providers = [], isError: catalogueUnavailable } = useProviders()
   const { isAdmin } = useAuth()
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormValues>({
@@ -144,9 +200,33 @@ export function AccountForm({ open, onOpenChange, onSubmit, isLoading, initial }
   const selectedPortfolioId = watch('portfolioId')
   const capabilities = watch('capabilities')
   const systemScopes = watch('systemScopes')
+  const providerSlug = watch('provider')
+  const selectedTier = watch('tier')
 
   const allowedCaps = ALLOWED_CAPABILITIES[selectedType] ?? []
   const isKeyed = KEYED_TYPES.includes(selectedType)
+
+  const provider: Provider | undefined = useMemo(
+    () => providers.find((p) => p.slug === providerSlug),
+    [providers, providerSlug]
+  )
+  // A slug the catalogue does not know still has to be editable: an older
+  // backend, or an account created before the provider was registered.
+  const isUnlistedSlug = Boolean(providerSlug) && !provider
+  const showSlugInput = catalogueUnavailable || providers.length === 0 || isUnlistedSlug
+  const extraFields = provider?.fields ?? []
+
+  useEffect(() => {
+    if (!open) return
+    // Extra fields are declared per provider, so their initial values can only
+    // be read once the catalogue and the chosen slug are both known.
+    const data = initial?.data ?? {}
+    const extras: Record<string, string> = {}
+    for (const field of extraFields) {
+      extras[field.key] = data[field.key] ?? ''
+    }
+    setValue('extras', extras)
+  }, [open, initial, extraFields, setValue])
 
   function setType(type: FormValues['type']) {
     setValue('type', type)
@@ -159,6 +239,27 @@ export function AccountForm({ open, onOpenChange, onSubmit, isLoading, initial }
     }
     setValue('capabilities', caps)
     setValue('systemScopes', systemScopes.filter((s) => caps.includes(s)))
+  }
+
+  // Choosing a provider pre-selects the capabilities it is reached through.
+  // The mapping is a property of what the provider does, and expecting a person
+  // to know that a price feed is reached via "market_data" is how an account
+  // ends up created, correct-looking and never consulted.
+  function setProvider(slug: string) {
+    if (slug === CUSTOM_PROVIDER) {
+      setValue('provider', '')
+      return
+    }
+    const next = slug === NO_PROVIDER ? '' : slug
+    setValue('provider', next)
+    setValue('tier', '')
+
+    const chosen = providers.find((p) => p.slug === next)
+    if (!chosen?.capabilities?.length) return
+    const allowed = ALLOWED_CAPABILITIES[selectedType] ?? []
+    const suggested = chosen.capabilities.filter((c) => allowed.includes(c))
+    const merged = Array.from(new Set([...capabilities, ...suggested]))
+    setValue('capabilities', merged)
   }
 
   function toggleCapability(cap: AccountCapability, checked: boolean) {
@@ -174,16 +275,26 @@ export function AccountForm({ open, onOpenChange, onSubmit, isLoading, initial }
   }
 
   function handleSubmitValues(values: FormValues) {
-    const data: Record<string, string> = {}
+    const owned: Record<string, string | undefined> = {}
     if (values.type === 'ACCOUNT_TYPE_WALLET') {
-      if (values.address) data.address = values.address
-      if (values.chain) data.chain = values.chain
+      owned.address = values.address
+      owned.chain = values.chain
     }
     if (KEYED_TYPES.includes(values.type)) {
-      if (values.provider) data.provider = values.provider.trim().toLowerCase()
-      if (values.apiKey) data.api_key = values.apiKey
-      if (values.apiSecret) data.api_secret = values.apiSecret
+      owned.provider = values.provider?.trim().toLowerCase()
+      owned.api_key = values.apiKey
+      owned.api_secret = values.apiSecret
+      for (const key of BUDGET_KEYS) {
+        owned[key] = values[key]
+      }
+      for (const field of extraFields) {
+        owned[field.key] = values.extras?.[field.key]
+      }
     }
+
+    // The form owns the keys it renders; everything else in accounts.data is
+    // carried through, because UpdateAccount writes the map by replacement.
+    const data = mergeAccountData(initial?.data, owned)
     onSubmit({
       name: values.name,
       type: values.type,
@@ -197,7 +308,7 @@ export function AccountForm({ open, onOpenChange, onSubmit, isLoading, initial }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{initial ? 'Edit Account' : 'New Account'}</DialogTitle>
         </DialogHeader>
@@ -248,20 +359,155 @@ export function AccountForm({ open, onOpenChange, onSubmit, isLoading, initial }
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Provider credentials</p>
               <div className="space-y-1">
                 <Label htmlFor="acc-provider">Provider</Label>
-                <Input id="acc-provider" {...register('provider')} placeholder="binance, moralis, coingecko, …" />
+                {providers.length > 0 && (
+                  <Select
+                    value={isUnlistedSlug ? CUSTOM_PROVIDER : (providerSlug || NO_PROVIDER)}
+                    onValueChange={setProvider}
+                  >
+                    <SelectTrigger id="acc-provider-select">
+                      <SelectValue placeholder="Choose a provider" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_PROVIDER}>
+                        <span className="text-muted-foreground">No provider</span>
+                      </SelectItem>
+                      {providers.map((p) => (
+                        <SelectItem key={p.slug} value={p.slug}>
+                          <span>{p.title || p.slug}</span>
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {p.keyless ? 'no key needed' : p.needsApiKey ? 'key required' : 'key optional'}
+                          </span>
+                        </SelectItem>
+                      ))}
+                      <SelectItem value={CUSTOM_PROVIDER}>
+                        <span className="text-muted-foreground">Something else…</span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+                {showSlugInput && (
+                  <Input id="acc-provider" {...register('provider')} placeholder="binance, moralis, coingecko, …" />
+                )}
                 {errors.provider && <p className="text-sm text-destructive">{errors.provider.message}</p>}
+                {provider?.chains?.length ? (
+                  <p className="text-xs text-muted-foreground">
+                    Reads: <code className="font-mono">{provider.chains.join(', ')}</code>
+                  </p>
+                ) : null}
+                {provider?.keyless && (
+                  <p className="text-xs text-muted-foreground">
+                    Works without a key. An account exists to throttle it or give this deployment a share of a shared plan.
+                  </p>
+                )}
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="acc-api-key">API key</Label>
-                <Input id="acc-api-key" {...register('apiKey')} autoComplete="off" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="acc-api-secret">API secret</Label>
-                <Input id="acc-api-secret" {...register('apiSecret')} autoComplete="off" placeholder="Optional" />
-              </div>
+              {(!provider || provider.needsApiKey || provider.keyless) && (
+                <div className="space-y-1">
+                  <Label htmlFor="acc-api-key">API key{provider?.needsApiKey ? '' : ' (optional)'}</Label>
+                  <Input id="acc-api-key" {...register('apiKey')} autoComplete="off" />
+                </div>
+              )}
+              {(!provider || provider.needsApiSecret) && (
+                <div className="space-y-1">
+                  <Label htmlFor="acc-api-secret">API secret{provider?.needsApiSecret ? '' : ' (optional)'}</Label>
+                  <Input id="acc-api-secret" {...register('apiSecret')} autoComplete="off" placeholder="Optional" />
+                </div>
+              )}
+              {extraFields.map((field) => (
+                <div key={field.key} className="space-y-1">
+                  <Label htmlFor={`acc-extra-${field.key}`}>
+                    {field.title || field.key}{field.required ? '' : ' (optional)'}
+                  </Label>
+                  {field.multiline ? (
+                    <Textarea
+                      id={`acc-extra-${field.key}`}
+                      className="font-mono text-xs"
+                      rows={5}
+                      {...register(`extras.${field.key}` as const)}
+                    />
+                  ) : (
+                    <Input id={`acc-extra-${field.key}`} {...register(`extras.${field.key}` as const)} />
+                  )}
+                  {field.help && <p className="text-xs text-muted-foreground">{field.help}</p>}
+                </div>
+              ))}
               <p className="text-xs text-muted-foreground">
                 Secrets are write-only: saved values show as <code className="font-mono">••••</code> + last 4.
                 Leave the masked value untouched to keep the stored secret, or paste a new one to rotate it.
+              </p>
+            </div>
+          )}
+          {isKeyed && (
+            <div className="space-y-3 rounded-md border border-border p-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Plan and budget</p>
+              {provider?.tiers?.length ? (
+                <div className="space-y-1">
+                  <Label>Plan</Label>
+                  <Select
+                    value={selectedTier === '' ? DEFAULT_TIER : (selectedTier ?? DEFAULT_TIER)}
+                    onValueChange={(v) => setValue('tier', v === DEFAULT_TIER ? '' : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {provider.tiers.map((tier) => (
+                        <SelectItem key={tier.name || DEFAULT_TIER} value={tier.name || DEFAULT_TIER}>
+                          {tierLabel(tier)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    The plan the key is on. Moving to a paid one is this setting, not a release.
+                  </p>
+                </div>
+              ) : null}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="acc-quota">Quota</Label>
+                  <Input id="acc-quota" {...register('quota')} inputMode="numeric" placeholder="plan default" />
+                  {errors.quota && <p className="text-sm text-destructive">{errors.quota.message}</p>}
+                </div>
+                <div className="space-y-1">
+                  <Label>Period</Label>
+                  <Select
+                    value={watch('period') || DEFAULT_TIER}
+                    onValueChange={(v) => setValue('period', v === DEFAULT_TIER ? '' : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={DEFAULT_TIER}>
+                        <span className="text-muted-foreground">unset</span>
+                      </SelectItem>
+                      <SelectItem value="day">day</SelectItem>
+                      <SelectItem value="month">month</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.period && <p className="text-sm text-destructive">{errors.period.message}</p>}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                A quota is <strong>this deployment&apos;s share</strong> of the plan, not the plan itself. Two
+                instances on one key cannot see each other&apos;s spend, so each needs its own share —
+                without them both assume they own the whole allowance and it runs out with both still
+                reporting room.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="acc-rps">Requests per second</Label>
+                  <Input id="acc-rps" {...register('rps')} inputMode="decimal" placeholder="plan default" />
+                  {errors.rps && <p className="text-sm text-destructive">{errors.rps.message}</p>}
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="acc-burst">Burst</Label>
+                  <Input id="acc-burst" {...register('burst')} inputMode="numeric" placeholder="plan default" />
+                  {errors.burst && <p className="text-sm text-destructive">{errors.burst.message}</p>}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Blank means the plan&apos;s own number. Keep burst at 1 for providers that meter per second.
               </p>
             </div>
           )}

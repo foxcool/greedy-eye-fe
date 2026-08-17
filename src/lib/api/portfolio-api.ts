@@ -1,7 +1,7 @@
 // Connect-RPC endpoints for PortfolioService.
 // All methods use POST to /eye.v1.PortfolioService/<Method>.
 import { apiClient } from './client'
-import type { Portfolio, Holding, Account, PortfolioValueResponse } from './backend-types'
+import type { Portfolio, Holding, Account, PortfolioValueResponse, Provider } from './backend-types'
 
 const RPC = (method: string) => `/eye.v1.PortfolioService/${method}`
 
@@ -177,6 +177,22 @@ export async function updateSystemScopes(
     account: { id, systemScopes },
     updateMask: 'systemScopes',
   })
+}
+
+// --- Providers ---
+
+// listProviders describes the external services an account can be created
+// against: which slug to name, whether a key and secret are wanted, which
+// chains the provider reads, which plans it is metered under, and any extra
+// field it cannot work without.
+//
+// It returns descriptions, never credentials, and the catalogue is identical
+// for every caller. The point of asking the backend rather than keeping a list
+// here is that a list here would be a second copy of the registry — and the
+// two would drift the first time an adapter was added.
+export async function listProviders(): Promise<Provider[]> {
+  const res = await apiClient.post<{ providers?: Provider[] }>(RPC('ListProviders'), {})
+  return res.providers ?? []
 }
 
 // cascade also removes the account's positions. Transaction history is never

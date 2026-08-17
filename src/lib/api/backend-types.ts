@@ -90,6 +90,59 @@ export interface Account {
 // Prefix the backend uses when masking write-only secret values.
 export const SECRET_MASK_PREFIX = '••••'
 
+// What a provider does. A provider may do several: Binance both syncs an
+// exchange account and quotes prices.
+export type ProviderKind =
+  | 'PROVIDER_KIND_UNSPECIFIED'
+  | 'PROVIDER_KIND_PRICE'
+  | 'PROVIDER_KIND_WALLET'
+  | 'PROVIDER_KIND_EXCHANGE'
+
+// An accounts.data entry a provider needs beyond the usual key and secret —
+// a trust anchor, for instance, which no key field can hold.
+export interface ProviderField {
+  key: string
+  title: string
+  // What happens without it, in one sentence.
+  help?: string
+  required?: boolean
+  // Wants a textarea rather than an input: a PEM block is not a line.
+  multiline?: boolean
+}
+
+// A plan the provider meters a credential under, with the limits this instance
+// applies by default. `name` is what goes into data["tier"]; empty is the
+// provider's free keyed plan.
+export interface ProviderTier {
+  name: string
+  rps?: number
+  burst?: number
+  // Requests the plan allows per period; absent when only rate is metered.
+  quota?: number
+  // "day", "month", or absent.
+  quotaPeriod?: string
+}
+
+// Provider describes an external service an account can be created against.
+// Served by PortfolioService.ListProviders — the same registry the resolver
+// routes on, so the form offers what the backend actually uses rather than a
+// list of its own that drifts.
+export interface Provider {
+  slug: string
+  title?: string
+  kinds?: ProviderKind[]
+  // Capabilities an account must carry for this provider to be reachable.
+  capabilities?: AccountCapability[]
+  needsApiKey?: boolean
+  needsApiSecret?: boolean
+  // Answers with no account at all; an account naming the slug still wins,
+  // which is how a free feed gets throttled or given a share of a shared plan.
+  keyless?: boolean
+  chains?: string[]
+  fields?: ProviderField[]
+  tiers?: ProviderTier[]
+}
+
 // Identity verdict (scam-filtering): whether an asset is what it claims to be.
 // A permanent property, distinct from a real asset's situational risk and from a
 // user's per-holding excluded decision.

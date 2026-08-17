@@ -114,7 +114,9 @@ export interface ProviderField {
 // applies by default. `name` is what goes into data["tier"]; empty is the
 // provider's free keyed plan.
 export interface ProviderTier {
-  name: string
+  // Absent for the provider's free keyed plan: proto3 JSON omits an empty
+  // string, so "" never reaches the wire as a value.
+  name?: string
   rps?: number
   burst?: number
   // Requests the plan allows per period; absent when only rate is metered.

@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { Account, AccountCapability, AccountType, Provider } from '@/lib/api/backend-types'
+import type { Account, AccountCapability, AccountType, Provider, ProviderTier } from '@/lib/api/backend-types'
 import { usePortfolios } from '@/hooks/use-portfolios'
 import { useProviders } from '@/hooks/use-providers'
 import { mergeAccountData } from '@/lib/accounts/account-data'
@@ -174,8 +174,12 @@ function initialValues(initial?: Account): FormValues {
 
 // tierLabel says what picking a plan costs, next to its name. A name alone is a
 // choice made blind: the numbers are what the limiter will actually apply.
-function tierLabel(tier: { name: string; rps?: number; burst?: number; quota?: number; quotaPeriod?: string }): string {
-  const name = tier.name === '' ? 'Free (keyed)' : tier.name
+//
+// The free keyed plan arrives with NO name at all, not with an empty one:
+// proto3 JSON omits an empty string, so a comparison against '' reads undefined
+// and prints it. Seen on the dev instance as "undefined — 1.6 rps, 10 000/month".
+function tierLabel(tier: ProviderTier): string {
+  const name = tier.name ? tier.name : 'Free (keyed)'
   const parts: string[] = []
   if (tier.rps) parts.push(`${tier.rps} rps`)
   if (tier.quota) parts.push(`${tier.quota.toLocaleString()}/${tier.quotaPeriod || 'period'}`)
@@ -400,12 +404,17 @@ export function AccountForm({ open, onOpenChange, onSubmit, isLoading, initial }
                   </p>
                 )}
               </div>
-              {(!provider || provider.needsApiKey || provider.keyless) && (
-                <div className="space-y-1">
-                  <Label htmlFor="acc-api-key">API key{provider?.needsApiKey ? '' : ' (optional)'}</Label>
-                  <Input id="acc-api-key" {...register('apiKey')} autoComplete="off" />
-                </div>
-              )}
+              {/* The key field is always offered. "Not required" is not the same
+                  as "not accepted": CoinGecko answers keyless and answers better
+                  with a key, and hiding the field leaves no way to enter one. */}
+              <div className="space-y-1">
+                <Label htmlFor="acc-api-key">API key{provider?.needsApiKey ? '' : ' (optional)'}</Label>
+                <Input id="acc-api-key" {...register('apiKey')} autoComplete="off" />
+              </div>
+              {/* The secret, by contrast, is hidden where the provider signs
+                  nothing: a read-only price feed has no second half to a
+                  credential, and offering the field invites a value that will
+                  sit in the account unused. */}
               {(!provider || provider.needsApiSecret) && (
                 <div className="space-y-1">
                   <Label htmlFor="acc-api-secret">API secret{provider?.needsApiSecret ? '' : ' (optional)'}</Label>

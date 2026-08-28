@@ -41,7 +41,7 @@ export type ValuationStatus =
   | { kind: 'undisclosed'; disclosed: number; total: number }
   | { kind: 'unknown' }
 
-export type UnpricedReason = 'NO_QUOTE' | 'THIN_MARKET' | 'NEVER_PRICED' | 'OTHER'
+export type UnpricedReason = 'NO_QUOTE' | 'THIN_MARKET' | 'NEVER_PRICED' | 'NO_CROSS_RATE' | 'OTHER'
 
 /**
  * What is known about asking this asset's price sources, at the moment the
@@ -87,6 +87,8 @@ function parseReason(raw: string | undefined): UnpricedReason {
       return 'THIN_MARKET'
     case 'UNPRICED_REASON_NEVER_PRICED':
       return 'NEVER_PRICED'
+    case 'UNPRICED_REASON_NO_CROSS_RATE':
+      return 'NO_CROSS_RATE'
     default:
       // A reason this build does not know about still has to read as prose. The
       // one thing it must never do is surface `UNPRICED_REASON_SOMETHING` to a
@@ -268,7 +270,9 @@ export function statusExplanation(status: ValuationStatus): string {
     case 'unpriced':
       switch (status.reason) {
         case 'NO_QUOTE':
-          return 'Not valued: there is no stored price, or no path from the price we have to your display currency. Missing data, not a value of zero.'
+          return 'Not valued: there is no stored price for this asset in any currency. Missing data, not a value of zero.'
+        case 'NO_CROSS_RATE':
+          return 'Not valued: this asset has a current price, but in a currency we hold no exchange rate to your display currency for. The position is priced; only the conversion is missing.'
         case 'THIN_MARKET':
           return 'Not valued: a quote exists, but the market behind it is too thin to sell this position at that price. The quote is real; the money is not.'
         case 'NEVER_PRICED':

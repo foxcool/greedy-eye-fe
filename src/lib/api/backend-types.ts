@@ -311,6 +311,7 @@ export interface UnpricedHolding {
   assetId?: string
   symbol?: string
   // UNPRICED_REASON_NO_QUOTE | UNPRICED_REASON_THIN_MARKET | UNPRICED_REASON_NEVER_PRICED
+  //   | UNPRICED_REASON_NO_CROSS_RATE
   reason?: string
   // Since when the sources have been asked without answering. Set only with
   // NEVER_PRICED, where it turns "no price" into "no price for eleven days".

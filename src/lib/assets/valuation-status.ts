@@ -32,8 +32,10 @@ export type ValuationStatus =
   | { kind: 'excluded-manual' }
   | { kind: 'unpriced'; reason: UnpricedReason; askedSince?: string; sourcesAsked?: number }
   // A quote for this asset exists and the valuation still could not use it. The
-  // backend does not record WHICH of the two causes applied to this position, so
-  // neither does this state.
+  // backend DOES record which cause applied — it is reachable through
+  // ListUnpricedHoldings — but this response did not carry it: no position in
+  // this asset reached the capped disclosure list. The gap is in what was
+  // disclosed here, not in what is known.
   | { kind: 'priced-unusable'; lastAskedAt?: string }
   // No source has ever been asked about this asset — a gap in coverage, not a
   // statement about the market.
@@ -129,9 +131,19 @@ export function holdingStatus(
     return { kind: 'excluded-manual' }
   }
 
-  const entry = coverage?.unpriced?.find((u) =>
-    u.holdingId ? u.holdingId === holding.id : u.assetId === holding.assetId
-  )
+  // Exact position first, then any position in the same asset. The fallback is
+  // sound because an unpriced reason is a fact about the ASSET's quote, not
+  // about the position: the backend derives it from `unitPrice(assetID,
+  // quoteAssetID)`, whose signature has no holding in it. Two unexcluded
+  // holdings of one asset therefore cannot carry different reasons — and
+  // exclusion is already decided above, before this runs.
+  //
+  // Without the fallback the capped list splits them: on prod the HDX page
+  // showed one position as THIN_MARKET and its twin, outside the sample of 50,
+  // as "which of the two is not recorded". Same asset, same quote, two answers.
+  const entry =
+    coverage?.unpriced?.find((u) => u.holdingId === holding.id) ??
+    coverage?.unpriced?.find((u) => u.assetId === holding.assetId)
   if (entry) {
     return {
       kind: 'unpriced',
@@ -153,9 +165,10 @@ export function holdingStatus(
   if (coverage?.unpricedTruncated) {
     switch (pricing.state) {
       case 'known':
-        // A stored price the valuation did not use failed for a reason the
-        // backend records per ASSET, not per holding: no path to the display
-        // currency, or a market too thin to sell into. Both stay named.
+        // Reached only when NO position in this asset made the disclosure list
+        // — the asset-level fallback above already covers the case where one
+        // did. All that is left here is the pricing record, which says whether
+        // a price was ever stored but not why the valuation refused it.
         return pricing.status.everPriced
           ? { kind: 'priced-unusable', lastAskedAt: pricing.status.lastAskedAt }
           : {
@@ -284,7 +297,7 @@ export function statusExplanation(status: ValuationStatus): string {
       const last = since(status.lastAskedAt)
       return `Not valued, though a price for this asset has been stored${
         last ? ` — sources last asked ${last}` : ''
-      }. The valuation could not use that quote: either there is no path from it to your display currency, or the market behind it is too thin to sell into. Which of the two is not recorded per position.`
+      }. The valuation could not use that quote: either there is no path from it to your display currency, or the market behind it is too thin to sell into. Which of the two is recorded, but this report did not disclose it for any position in this asset.`
     }
     case 'never-asked':
       return 'Not valued: no price source has ever been asked about this asset. That is a gap in coverage — nothing here is a statement about the market.'

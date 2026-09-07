@@ -35,6 +35,14 @@ const CAPABILITY_BADGES: Record<string, string> = {
   manual_positions: 'manual',
 }
 
+// The types SyncAccount accepts. Manual is absent because those positions come
+// from a human, and everything else has no syncer at all.
+//
+// Broker was missing here while the backend already synced it, so the only way
+// to refresh a brokerage account was a direct RPC call — the capability was
+// declared, the button was not there, and nothing said why (personal-c1nz).
+const SYNCABLE_TYPES = ['ACCOUNT_TYPE_WALLET', 'ACCOUNT_TYPE_EXCHANGE', 'ACCOUNT_TYPE_BROKER']
+
 function scopesEqual(a: string[] = [], b: string[] = []): boolean {
   return a.length === b.length && a.every((x) => b.includes(x))
 }
@@ -169,7 +177,7 @@ export function AccountList() {
                 <TableCell className="text-muted-foreground">{a.description ?? '—'}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
-                    {(a.type === 'ACCOUNT_TYPE_WALLET' || a.type === 'ACCOUNT_TYPE_EXCHANGE') && (
+                    {SYNCABLE_TYPES.includes(a.type ?? '') && (
                       <Button
                         variant="outline"
                         size="sm"

@@ -27,7 +27,7 @@ function ScopedTotalValue() {
   const { data: portfolio, isLoading, isFetching } = usePortfolio()
   const total = portfolio?.totalValue
   return (
-    <div className="text-right">
+    <div className="text-left sm:text-right">
       <p className="text-xs text-muted-foreground mb-0.5">Total value</p>
       {/* Dim while a background refetch is in flight so a stale value is obvious. */}
       <p className={`text-2xl font-bold tabular-nums transition-opacity ${isFetching ? 'opacity-50' : ''}`}>
@@ -65,13 +65,13 @@ export default function PortfolioDetailPage({ params }: PageProps) {
   return (
     <PortfolioScopeProvider portfolioId={id}>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="flex min-w-0 items-center gap-3">
             <Button variant="ghost" size="sm" asChild>
               <Link href="/portfolios">←</Link>
             </Button>
-            <div>
-              <h1 className="text-2xl font-semibold">{portfolio.name}</h1>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold break-words">{portfolio.name}</h1>
               {portfolio.description && (
                 <p className="text-sm text-muted-foreground">{portfolio.description}</p>
               )}
@@ -81,7 +81,7 @@ export default function PortfolioDetailPage({ params }: PageProps) {
         </div>
 
         <Tabs defaultValue="overview">
-          <TabsList>
+          <TabsList className="max-w-full overflow-x-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="holdings">Holdings</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>

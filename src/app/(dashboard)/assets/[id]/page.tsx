@@ -115,15 +115,15 @@ export default function AssetDetailPage({ params }: PageProps) {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
           <BackButton />
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold">{asset.symbol ?? asset.name}</h1>
+              <h1 className="text-2xl font-semibold break-words">{asset.symbol ?? asset.name}</h1>
               <VerdictBadge verdict={asset.identityVerdict} source={asset.verdictSource} />
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground break-words">
               {asset.name}
               {' · '}
               {ASSET_TYPE_LABELS[asset.type] ?? asset.type}

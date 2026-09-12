@@ -54,32 +54,72 @@ const NAV_LINKS = [
   { href: '/settings', label: 'Settings' },
 ]
 
-function Sidebar() {
+// One author for "is this link the current page": the rail and the strip render
+// the same list in two shapes, and a second copy of this test is how the two
+// come to disagree about where the user is.
+function NavLink({
+  href,
+  label,
+  className = '',
+}: {
+  href: string
+  label: string
+  className?: string
+}) {
   const pathname = usePathname()
+  const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href)
   return (
-    <aside className="w-64 shrink-0 border-r border-border bg-card">
+    <Link
+      href={href}
+      aria-current={isActive ? 'page' : undefined}
+      className={`rounded-lg text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors ${
+        isActive ? 'bg-secondary' : 'hover:bg-secondary/60'
+      } ${className}`}
+    >
+      {label}
+    </Link>
+  )
+}
+
+// The rail is 16rem of a screen that may only be 20rem wide, so below md it is
+// not narrowed — it is replaced by the strip below. Narrowing would have kept
+// the divider and lost the content it divides.
+function Sidebar() {
+  return (
+    <aside className="hidden md:block w-64 shrink-0 border-r border-border bg-card">
       {/* Pinned below the 3.5rem header: navigation that scrolls away is not
           navigation. The rail itself stretches so the divider runs full height. */}
       <nav
         className="sticky top-14 max-h-[calc(100vh-3.5rem)] overflow-y-auto space-y-2 p-4"
         aria-label="Main navigation"
       >
-        {NAV_LINKS.map(({ href, label }) => {
-          const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href)
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`block px-3 py-2 rounded-lg text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors ${
-                isActive ? 'bg-secondary' : 'hover:bg-secondary/60'
-              }`}
-            >
-              {label}
-            </Link>
-          )
-        })}
+        {NAV_LINKS.map(({ href, label }) => (
+          <NavLink key={href} href={href} label={label} className="block px-3 py-2" />
+        ))}
       </nav>
     </aside>
+  )
+}
+
+// The small-screen form of the same rail: a row under the header, pinned for the
+// same reason and scrolling sideways when six labels do not fit. Deliberately not
+// a drawer — six short links cost less on screen than a button that hides them,
+// and a strip has no open state to get wrong.
+function NavStrip() {
+  return (
+    <nav
+      className="md:hidden sticky top-14 z-40 flex gap-1 overflow-x-auto border-b border-border bg-card px-2 py-2"
+      aria-label="Main navigation"
+    >
+      {NAV_LINKS.map(({ href, label }) => (
+        <NavLink
+          key={href}
+          href={href}
+          label={label}
+          className="shrink-0 px-3 py-1.5 text-sm"
+        />
+      ))}
+    </nav>
   )
 }
 
@@ -92,9 +132,14 @@ export default function DashboardLayout({
     <ProtectedRoute>
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
+        <NavStrip />
         <div className="flex flex-1">
           <Sidebar />
-          <main className="flex-1 p-6">
+          {/* min-w-0 is the whole fix for the page scrolling sideways: a flex
+              item defaults to min-width:auto, so it refuses to shrink below its
+              widest content and pushes the document past the viewport instead of
+              letting that content scroll inside its own box. */}
+          <main className="min-w-0 flex-1 p-4 md:p-6">
             {children}
           </main>
         </div>

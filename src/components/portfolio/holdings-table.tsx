@@ -39,9 +39,13 @@ export function HoldingsTable({ maxRows, showSources = true }: HoldingsTableProp
 
   const displayHoldings = maxRows ? holdings.slice(0, maxRows) : holdings
 
+  // overflow-x-auto, not overflow-hidden: seven columns do not fit a phone, and
+  // hiding them does not make them fit — it makes Value and 24h unreachable. The
+  // min-width keeps the columns legible while they scroll rather than letting
+  // them squash into slivers.
   return (
-    <div className="rounded-lg border border-border overflow-hidden">
-      <table className="w-full">
+    <div className="rounded-lg border border-border overflow-x-auto">
+      <table className="w-full min-w-[44rem]">
         <thead className="bg-muted/50">
           <tr className="text-left text-sm text-muted-foreground">
             <th className="px-4 py-3 font-medium w-8"></th>

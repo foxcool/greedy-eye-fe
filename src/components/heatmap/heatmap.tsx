@@ -47,8 +47,17 @@ interface TileProps {
   name?: string
   colorValue?: number
   assetId?: string
-  onLeafClick?: (assetId: string) => void
+  onLeafClick?: LeafClickHandler
 }
+
+/**
+ * The event travels with the id so the caller can honour cmd/ctrl-click: an SVG
+ * tile has no <a> the browser would open in a new tab by itself.
+ */
+export type LeafClickHandler = (
+  assetId: string,
+  e: React.MouseEvent | React.KeyboardEvent
+) => void
 
 function HeatTile(props: TileProps) {
   const { x = 0, y = 0, width = 0, height = 0, name, colorValue = 0, assetId, onLeafClick } = props
@@ -58,10 +67,22 @@ function HeatTile(props: TileProps) {
   const showChange = showLabel && height > 44
   const clickable = Boolean(assetId && onLeafClick)
 
+  // Focusable and Enter-activated, so the map is not a mouse-only way in. The
+  // label is the tile's name; the tooltip that carries the numbers is hover-only.
   return (
     <g
-      onClick={clickable ? () => onLeafClick!(assetId!) : undefined}
-      style={clickable ? { cursor: 'pointer' } : undefined}
+      onClick={clickable ? (e) => onLeafClick!(assetId!, e) : undefined}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === 'Enter') onLeafClick!(assetId!, e)
+            }
+          : undefined
+      }
+      tabIndex={clickable ? 0 : undefined}
+      role={clickable ? 'link' : undefined}
+      aria-label={clickable ? `Open ${name ?? 'asset'}` : undefined}
+      className={clickable ? 'cursor-pointer outline-none [&:focus-visible>rect]:stroke-[var(--ring)] [&:focus-visible>rect]:stroke-2 hover:opacity-90' : undefined}
     >
       <rect
         x={x + 1}
@@ -126,7 +147,7 @@ export interface HeatmapProps {
   /** Leaf nodes only (parentId is ignored — group presentation is the caller's job). */
   nodes: HeatmapNode[]
   height?: number | `${number}%`
-  onLeafClick?: (assetId: string) => void
+  onLeafClick?: LeafClickHandler
 }
 
 /**

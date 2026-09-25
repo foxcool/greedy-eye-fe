@@ -3,6 +3,7 @@
 import { useAllocationTargets } from '@/hooks/use-portfolio'
 import { formatCurrency } from '@/lib/mocks'
 import type { TargetAllocation } from '@/lib/types/portfolio-view'
+import { AssetLink } from '@/components/asset/asset-link'
 
 interface AllocationTargetsProps {
   showOnlyDeviations?: boolean
@@ -98,7 +99,7 @@ function AllocationSection({ title, allocations, colorClass }: AllocationSection
 }
 
 function AllocationRow({ allocation }: { allocation: TargetAllocation }) {
-  const { symbol, targetPercentage, currentPercentage, diff, diffValue } = allocation
+  const { assetId, symbol, targetPercentage, currentPercentage, diff, diffValue } = allocation
   
   const diffColor = diff > 0 ? 'text-orange-500' : diff < 0 ? 'text-blue-500' : 'text-green-500'
   const bgWidth = Math.min(Math.max(currentPercentage, 0), 100)
@@ -107,7 +108,9 @@ function AllocationRow({ allocation }: { allocation: TargetAllocation }) {
   return (
     <div className="text-sm">
       <div className="flex justify-between items-center mb-1">
-        <span className="text-foreground">{symbol}</span>
+        <span className="text-foreground">
+          <AssetLink assetId={assetId}>{symbol}</AssetLink>
+        </span>
         <span className={`font-mono ${diffColor}`}>
           {diff > 0 ? '+' : ''}{diff}% ({diff > 0 ? '+' : ''}{formatCurrency(diffValue)})
         </span>

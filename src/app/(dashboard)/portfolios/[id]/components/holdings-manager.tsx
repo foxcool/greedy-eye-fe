@@ -16,6 +16,7 @@ import { useAccounts } from '@/hooks/use-accounts'
 import { useAssets } from '@/hooks/use-assets'
 import { holdingToDecimal } from '@/lib/api/backend-types'
 import { truncateAddress } from '@/lib/assets/links'
+import { AssetLink } from '@/components/asset/asset-link'
 import type { Account, Holding } from '@/lib/api/backend-types'
 
 interface HoldingsManagerProps {
@@ -87,10 +88,12 @@ function AccountGroup({
             return (
               <TableRow key={h.id} className={h.excluded ? 'opacity-40' : undefined}>
                 <TableCell>
-                  <span className="font-medium">{asset?.symbol ?? h.assetId}</span>
-                  {asset?.name && (
-                    <span className="ml-1 text-xs text-muted-foreground">{asset.name}</span>
-                  )}
+                  <AssetLink assetId={h.assetId}>
+                    <span className="font-medium">{asset?.symbol ?? h.assetId}</span>
+                    {asset?.name && (
+                      <span className="ml-1 text-xs text-muted-foreground">{asset.name}</span>
+                    )}
+                  </AssetLink>
                   {h.excluded && (
                     <span className="ml-2 text-[10px] uppercase tracking-wide text-destructive font-semibold">excluded</span>
                   )}
@@ -205,7 +208,9 @@ export function HoldingsManager({ portfolioId }: HoldingsManagerProps) {
                     const asset = assetMap.get(h.assetId)
                     return (
                       <TableRow key={h.id}>
-                        <TableCell>{asset?.symbol ?? h.assetId}</TableCell>
+                        <TableCell>
+                          <AssetLink assetId={h.assetId}>{asset?.symbol ?? h.assetId}</AssetLink>
+                        </TableCell>
                         <TableCell className="text-right tabular-nums text-sm">
                           {holdingToDecimal(h.amount, h.decimals).toLocaleString('en-US', { maximumFractionDigits: 8 })}
                         </TableCell>

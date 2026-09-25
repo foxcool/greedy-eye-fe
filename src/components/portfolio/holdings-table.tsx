@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useHoldings } from '@/hooks/use-portfolio'
+import { AssetLink } from '@/components/asset/asset-link'
 import { formatCurrency, formatPercentage, formatQuantity } from '@/lib/mocks'
 import type { PortfolioHolding } from '@/lib/types/portfolio-view'
 
@@ -124,8 +125,12 @@ function HoldingRow({ holding, isExpanded, onToggle, showSources }: HoldingRowPr
         </td>
         <td className="px-4 py-3">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-foreground">{holding.symbol}</span>
-            <span className="text-muted-foreground">{holding.name}</span>
+            {/* The asset opens its card; the rest of the row still expands to
+                sources, so the two clicks do not compete. */}
+            <AssetLink assetId={holding.assetId} className="flex min-w-0 items-center gap-2">
+              <span className="font-medium text-foreground">{holding.symbol}</span>
+              <span className="text-muted-foreground truncate">{holding.name}</span>
+            </AssetLink>
             {holding.unpriced && (
               <span
                 className="px-1.5 py-0.5 rounded text-[10px] uppercase font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400"

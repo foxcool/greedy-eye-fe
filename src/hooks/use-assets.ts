@@ -87,7 +87,12 @@ export function useUpdateAsset() {
       ...data
     }: { id: string } & Partial<Pick<Asset, 'name' | 'type' | 'symbol' | 'tags'>>) =>
       updateAsset(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['assets'] }),
+    // The card reads ['asset', id], not the list — editing from the card must
+    // refresh the card, or the dialog closes on the old name.
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ['assets'] })
+      qc.invalidateQueries({ queryKey: ['asset', id] })
+    },
   })
 }
 

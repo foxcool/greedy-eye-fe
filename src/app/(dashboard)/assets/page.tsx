@@ -1,7 +1,14 @@
 'use client'
 
-import { AssetList } from './components/asset-list'
+import { Suspense } from 'react'
+import { AssetsView } from './components/assets-view'
 
+// Suspense because the view reads its tab from the URL: useSearchParams opts the
+// subtree out of static prerendering and the build requires a boundary for it.
 export default function AssetsPage() {
-  return <AssetList />
+  return (
+    <Suspense>
+      <AssetsView />
+    </Suspense>
+  )
 }

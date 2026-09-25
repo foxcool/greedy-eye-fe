@@ -1,10 +1,12 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Heatmap } from './heatmap'
+import { useRouter } from 'next/navigation'
+import { Heatmap, type LeafClickHandler } from './heatmap'
 import type { HeatmapGroupBy, HeatmapNode, HeatmapWindow } from '@/lib/api/backend-types'
 import type { HeatmapOptions, HeatmapResult } from '@/hooks/use-heatmap'
 import { DEMO_MODE } from '@/lib/config/data-source'
+import { assetCardHref } from '@/lib/assets/links'
 import { cn } from '@/lib/utils'
 
 const WINDOWS: { value: HeatmapWindow; label: string }[] = [
@@ -77,7 +79,27 @@ export interface HeatmapCardProps {
   groupOptions?: GroupOption[]
   /** Flat treemap height in px. */
   height?: number
-  onLeafClick?: (assetId: string) => void
+  /** Defaults to opening the tile's asset card. */
+  onLeafClick?: LeafClickHandler
+}
+
+/**
+ * A tile opens its asset's card; with cmd/ctrl held, in a new tab, as a link
+ * would. Undefined in demo mode, where there is no card — and then the tiles
+ * are not drawn as clickable at all.
+ */
+function useOpenAssetCard(): LeafClickHandler | undefined {
+  const router = useRouter()
+  if (DEMO_MODE) return undefined
+  return (assetId, e) => {
+    const href = assetCardHref(assetId)
+    if (!href) return
+    if (e.metaKey || e.ctrlKey) {
+      window.open(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${href}`, '_blank', 'noopener')
+    } else {
+      router.push(href)
+    }
+  }
 }
 
 export function HeatmapCard({
@@ -86,8 +108,10 @@ export function HeatmapCard({
   header,
   groupOptions = [],
   height = 384,
-  onLeafClick,
+  onLeafClick: onLeafClickProp,
 }: HeatmapCardProps) {
+  const openAssetCard = useOpenAssetCard()
+  const onLeafClick = onLeafClickProp ?? openAssetCard
   const [window, setWindow] = useState<HeatmapWindow>('HEATMAP_WINDOW_24H')
   const [groupBy, setGroupBy] = useState<HeatmapGroupBy | undefined>(undefined)
 

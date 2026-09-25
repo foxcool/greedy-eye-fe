@@ -2,6 +2,7 @@
 
 import { useHoldings } from '@/hooks/use-portfolio'
 import { formatCurrency } from '@/lib/mocks'
+import { AssetLink } from '@/components/asset/asset-link'
 
 interface AllocationBarsProps {
   maxItems?: number
@@ -92,6 +93,7 @@ export function AllocationBars({
         {displayItems.map((holding) => (
           <AllocationBar
             key={holding.assetId}
+            assetId={holding.assetId}
             symbol={holding.symbol}
             value={holding.value}
             percentage={holding.percentage}
@@ -121,6 +123,8 @@ export function AllocationBars({
 }
 
 interface AllocationBarProps {
+  /** Absent on the "Other" bucket, which is not an asset. */
+  assetId?: string
   symbol: string
   value: number
   percentage: number
@@ -131,6 +135,7 @@ interface AllocationBarProps {
 }
 
 function AllocationBar({ 
+  assetId,
   symbol, 
   value, 
   percentage, 
@@ -162,7 +167,7 @@ function AllocationBar({
       <div className="flex justify-between items-baseline mb-1">
         <div className="flex items-center gap-2">
           <span className={`text-sm font-medium ${isOther ? 'text-muted-foreground' : 'text-foreground'}`}>
-            {symbol}
+            <AssetLink assetId={assetId}>{symbol}</AssetLink>
           </span>
           {change24h !== undefined && !isOther && (
             <span className={`text-xs ${change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>

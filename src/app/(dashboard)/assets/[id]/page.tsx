@@ -2,12 +2,14 @@
 
 import { use } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { PriceHistoryChart } from '@/components/prices/price-history-chart'
 import { useAsset, useLatestPrice } from '@/hooks/use-assets'
 import { holdingToDecimal, type Asset } from '@/lib/api/backend-types'
 import { DEMO_MODE } from '@/lib/config/data-source'
 import { truncateAddress } from '@/lib/assets/links'
+import { assetTypeLabel } from '@/lib/assets/catalogue'
 import { formatCurrency } from '@/lib/mocks'
 import { VerdictBadge } from '../components/verdict-badge'
 import { HoldingsSection } from './components/holdings-section'
@@ -15,24 +17,37 @@ import { IdentitySection } from './components/identity-section'
 import { LinksSection } from './components/links-section'
 import { RiskFlagsSection } from './components/risk-flags-section'
 import { ValuationSection } from './components/valuation-section'
+import { AssetActions } from './components/asset-actions'
 
 interface PageProps {
   params: Promise<{ id: string }>
 }
 
-const ASSET_TYPE_LABELS: Record<string, string> = {
-  ASSET_TYPE_CRYPTOCURRENCY: 'Crypto',
-  ASSET_TYPE_STOCK: 'Stock',
-  ASSET_TYPE_BOND: 'Bond',
-  ASSET_TYPE_COMMODITY: 'Commodity',
-  ASSET_TYPE_FOREX: 'Forex',
-  ASSET_TYPE_FUND: 'Fund',
-}
 
+/**
+ * Back to wherever the reader came from — a portfolio, the heatmap, the list —
+ * not always to /assets. The card is reached from many places now, and sending
+ * everyone to the catalogue loses the page they were working in.
+ *
+ * A card opened in a fresh tab has no in-app history to return to; there the
+ * link's own href, the assets list, is the only sensible "back". The href stays
+ * a real link either way, so cmd-click still opens the list in a new tab.
+ */
 function BackButton() {
+  const router = useRouter()
   return (
     <Button variant="ghost" size="sm" asChild>
-      <Link href="/assets">←</Link>
+      <Link
+        href="/assets"
+        aria-label="Back"
+        onClick={(e) => {
+          if (e.metaKey || e.ctrlKey || window.history.length <= 1) return
+          e.preventDefault()
+          router.back()
+        }}
+      >
+        ←
+      </Link>
     </Button>
   )
 }
@@ -126,7 +141,7 @@ export default function AssetDetailPage({ params }: PageProps) {
             <p className="text-sm text-muted-foreground break-words">
               {asset.name}
               {' · '}
-              {ASSET_TYPE_LABELS[asset.type] ?? asset.type}
+              {assetTypeLabel(asset.type)}
               {marketLabel && ` · ${marketLabel}`}
             </p>
             {market.includes('/') && (
@@ -134,7 +149,10 @@ export default function AssetDetailPage({ params }: PageProps) {
             )}
           </div>
         </div>
-        <LastQuote asset={asset} />
+        <div className="flex items-start gap-2">
+          <LastQuote asset={asset} />
+          <AssetActions asset={asset} />
+        </div>
       </div>
 
       {/* Facts about the ASSET first. It is a catalogue entity — global, and the

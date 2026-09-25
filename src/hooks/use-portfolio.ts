@@ -8,7 +8,7 @@
  * 2. demo mode → mock holdings + deterministic mock prices, no network
  */
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   calculatePortfolio,
   getAllocationChartData,
@@ -51,6 +51,7 @@ function mergeCoverage(values: (PortfolioValueResponse | null)[]): ValuationCove
 export function usePortfolio() {
   // When set, scope all derived data to a single portfolio; otherwise aggregate.
   const { portfolioId } = usePortfolioScope()
+  const qc = useQueryClient()
 
   return useQuery<PortfolioQueryResult>({
     queryKey: ['portfolio', 'summary', { backend: USE_BACKEND_API, portfolioId }],
@@ -74,7 +75,10 @@ export function usePortfolio() {
         const [holdings, accounts, assets, beValues, priceResult, rules] = await Promise.all([
           listHoldings(portfolioId ? { portfolioId } : {}),
           listAccounts(),
-          listAssets(),
+          // The whole catalogue — thousands of rows, fifteen pages. Read through
+          // the same cache entry useAssets() fills, so a page that shows both the
+          // summary and the asset list pays for it once.
+          qc.ensureQueryData({ queryKey: ['assets', undefined], queryFn: () => listAssets() }),
           Promise.all(valuedPortfolios.map(p => calculatePortfolioValue(p.id, 'usd').catch(() => null))),
           fetchPortfolioPriceMap(valuedPortfolios.map(p => p.id)),
           portfolioId ? listRules({ portfolioId }).catch(() => []) : Promise.resolve([]),

@@ -1,4 +1,5 @@
 import type { Asset, AssetExternalRef } from '@/lib/api/backend-types'
+import { USE_BACKEND } from '@/lib/config/data-source'
 
 /**
  * Where an asset's identity can be looked up outside this system, and how to
@@ -123,4 +124,16 @@ export function coingeckoUrl(coinId: string): string {
 export function truncateAddress(address: string, lead = 6, tail = 4): string {
   if (address.length <= lead + tail + 1) return address
   return `${address.slice(0, lead)}…${address.slice(-tail)}`
+}
+
+/**
+ * The asset card's route, or nothing when there is no card to open.
+ *
+ * Demo mode has no card: there an asset id is a CoinGecko slug, not a catalogue
+ * UUID, and /assets/[id] renders an empty page for every one of them. A link
+ * that always lands on "needs a backend" is worse than no link.
+ */
+export function assetCardHref(assetId: string | undefined): string | undefined {
+  if (!USE_BACKEND || !assetId) return undefined
+  return `/assets/${assetId}`
 }

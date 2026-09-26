@@ -21,12 +21,18 @@ import { AssetForm } from '../../components/asset-form'
  *
  * An asset is global — one row shared by every user who holds it — so these are
  * catalogue maintenance, not something to offer on each of seven thousand list
- * rows. Delete is shown to admins only and asks first: it removes the entry for
- * everyone, not from the reader's view.
+ * rows. Both are admin-only on the backend, so the menu is not rendered for
+ * anyone else — an Edit that always answers PermissionDenied is a dead control.
+ * Delete asks first: it removes the entry for everyone, not from the reader's view.
  */
 export function AssetActions({ asset }: { asset: Asset }) {
-  const router = useRouter()
   const { isAdmin } = useAuth()
+  if (!isAdmin) return null
+  return <AdminAssetActions asset={asset} />
+}
+
+function AdminAssetActions({ asset }: { asset: Asset }) {
+  const router = useRouter()
   const update = useUpdateAsset()
   const remove = useDeleteAsset()
   const [editOpen, setEditOpen] = useState(false)
@@ -47,18 +53,14 @@ export function AssetActions({ asset }: { asset: Asset }) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onSelect={() => setEditOpen(true)}>Edit</DropdownMenuItem>
-          {isAdmin && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                disabled={remove.isPending}
-                onSelect={onDelete}
-              >
-                Delete from catalogue
-              </DropdownMenuItem>
-            </>
-          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            disabled={remove.isPending}
+            onSelect={onDelete}
+          >
+            Delete from catalogue
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 

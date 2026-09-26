@@ -10,7 +10,11 @@ const COLOR_CLAMP = 8
 
 interface TileDatum {
   id: string
+  /** Tile identity: recharts keys a tile by position and name, so this is the
+   *  node id — two same-ticker tiles at one point would otherwise collide. */
   name: string
+  /** What the tile says: the symbol, which two assets may share. */
+  label: string
   size: number
   colorValue: number
   price?: number
@@ -44,7 +48,7 @@ interface TileProps {
   y?: number
   width?: number
   height?: number
-  name?: string
+  label?: string
   colorValue?: number
   assetId?: string
   onLeafClick?: LeafClickHandler
@@ -60,7 +64,7 @@ export type LeafClickHandler = (
 ) => void
 
 function HeatTile(props: TileProps) {
-  const { x = 0, y = 0, width = 0, height = 0, name, colorValue = 0, assetId, onLeafClick } = props
+  const { x = 0, y = 0, width = 0, height = 0, label, colorValue = 0, assetId, onLeafClick } = props
   if (width <= 0 || height <= 0) return null
 
   const showLabel = width > 52 && height > 26
@@ -68,7 +72,7 @@ function HeatTile(props: TileProps) {
   const clickable = Boolean(assetId && onLeafClick)
 
   // Focusable and Enter-activated, so the map is not a mouse-only way in. The
-  // label is the tile's name; the tooltip that carries the numbers is hover-only.
+  // label is the tile's symbol; the tooltip that carries the numbers is hover-only.
   return (
     <g
       onClick={clickable ? (e) => onLeafClick!(assetId!, e) : undefined}
@@ -81,7 +85,7 @@ function HeatTile(props: TileProps) {
       }
       tabIndex={clickable ? 0 : undefined}
       role={clickable ? 'link' : undefined}
-      aria-label={clickable ? `Open ${name ?? 'asset'}` : undefined}
+      aria-label={clickable ? `Open ${label ?? 'asset'}` : undefined}
       className={clickable ? 'cursor-pointer outline-none [&:focus-visible>rect]:stroke-[var(--ring)] [&:focus-visible>rect]:stroke-2 hover:opacity-90' : undefined}
     >
       <rect
@@ -101,7 +105,7 @@ function HeatTile(props: TileProps) {
           fontSize={Math.min(14, Math.max(10, width / 8))}
           fontWeight={600}
         >
-          {name}
+          {label}
         </text>
       )}
       {showChange && (
@@ -129,7 +133,7 @@ function HeatTooltip({ active, payload }: { active?: boolean; payload?: TooltipE
   if (!active || !datum) return null
   return (
     <div className="rounded-md border border-border bg-popover px-3 py-2 text-sm shadow-md">
-      <p className="font-medium text-popover-foreground">{datum.name}</p>
+      <p className="font-medium text-popover-foreground">{datum.label}</p>
       <p className="text-muted-foreground tabular-nums">{formatCurrency(datum.size)}</p>
       <p className="tabular-nums" style={{ color: datum.colorValue >= 0 ? 'var(--ge-up)' : 'var(--ge-down)' }}>
         {formatChange(datum.colorValue)}
@@ -161,7 +165,8 @@ export function Heatmap({ nodes, height = '100%', onLeafClick }: HeatmapProps) {
         .filter(n => (n.size ?? 0) > 0)
         .map(n => ({
           id: n.id,
-          name: n.label ?? n.id,
+          name: n.id,
+          label: n.label ?? n.id,
           size: n.size ?? 0,
           colorValue: n.colorValue ?? 0,
           price: n.price,

@@ -23,6 +23,14 @@ interface HoldingsManagerProps {
   portfolioId: string
 }
 
+// A position the provider stopped reporting is zeroed, not deleted: the row keeps
+// its provenance, and its updatedAt froze when it closed (personal-hc3s). It is
+// history, so it sits apart from what the account holds instead of reading as a
+// live 0.
+function isClosed(h: Holding): boolean {
+  return holdingToDecimal(h.amount, h.decimals) === 0
+}
+
 const ACCOUNT_TYPE_LABEL: Record<string, string> = {
   ACCOUNT_TYPE_WALLET: 'Wallet',
   ACCOUNT_TYPE_EXCHANGE: 'Exchange',
@@ -48,8 +56,11 @@ function AccountGroup({
   onDelete: (h: Holding) => void
   isPending: boolean
 }) {
-  const included = holdings.filter((h) => !h.excluded)
-  const excluded = holdings.filter((h) => h.excluded)
+  const [showClosed, setShowClosed] = useState(false)
+  const open = holdings.filter((h) => !isClosed(h))
+  const closed = holdings.filter(isClosed)
+  const included = open.filter((h) => !h.excluded)
+  const excluded = open.filter((h) => h.excluded)
   const typeLabel = ACCOUNT_TYPE_LABEL[account.type] ?? account.type
 
   return (
@@ -70,6 +81,7 @@ function AccountGroup({
         <span className="text-xs text-muted-foreground">
           {included.length} asset{included.length !== 1 ? 's' : ''}
           {excluded.length > 0 && `, ${excluded.length} excluded`}
+          {closed.length > 0 && `, ${closed.length} closed`}
         </span>
       </div>
 
@@ -82,11 +94,12 @@ function AccountGroup({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {holdings.map((h) => {
+          {[...open, ...(showClosed ? closed : [])].map((h) => {
             const asset = assetMap.get(h.assetId)
             const amount = holdingToDecimal(h.amount, h.decimals)
+            const rowClosed = isClosed(h)
             return (
-              <TableRow key={h.id} className={h.excluded ? 'opacity-40' : undefined}>
+              <TableRow key={h.id} className={h.excluded || rowClosed ? 'opacity-40' : undefined}>
                 <TableCell>
                   <AssetLink assetId={h.assetId}>
                     <span className="font-medium">{asset?.symbol ?? h.assetId}</span>
@@ -102,7 +115,9 @@ function AccountGroup({
                   )}
                 </TableCell>
                 <TableCell className="text-right tabular-nums text-sm">
-                  {amount.toLocaleString('en-US', { maximumFractionDigits: 8 })}
+                  {rowClosed
+                    ? `closed ${new Date(h.updatedAt).toLocaleDateString('en-CA')}`
+                    : amount.toLocaleString('en-US', { maximumFractionDigits: 8 })}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
@@ -131,6 +146,20 @@ function AccountGroup({
               </TableRow>
             )
           })}
+          {closed.length > 0 && (
+            <TableRow>
+              <TableCell colSpan={3} className="py-1.5">
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                  aria-expanded={showClosed}
+                  onClick={() => setShowClosed((v) => !v)}
+                >
+                  {showClosed ? 'Hide' : 'Show'} {closed.length} closed position{closed.length !== 1 ? 's' : ''}
+                </button>
+              </TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
     </div>

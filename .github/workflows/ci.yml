@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   checks:
-    name: Typecheck, lint, build
+    name: Typecheck, lint, test, build
     runs-on: ubuntu-latest
 
     steps:
@@ -27,6 +27,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+      - run: npm test
       - run: npm run build
 
   release:

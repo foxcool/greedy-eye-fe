@@ -57,7 +57,8 @@ Checks run inside the dev container (its `node_modules`), not on the host:
 ```bash
 make lint             # ESLint
 make typecheck        # tsc --noEmit
-make check            # typecheck + lint + build — run before committing
+make test             # vitest: unit, component and route smoke tests
+make check            # typecheck + lint + test + build — run before committing
 ```
 
 Note: `make up` runs `npm run dev` (Turbopack) with on-demand compilation, so

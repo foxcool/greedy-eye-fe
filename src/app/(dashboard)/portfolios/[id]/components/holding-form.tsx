@@ -22,12 +22,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { Account, Asset, Holding } from '@/lib/api/backend-types'
-import { holdingToDecimal, decimalToHolding } from '@/lib/api/backend-types'
+import { decimalStringToRaw, rawToDecimalString } from '@/lib/api/backend-types'
 
 const schema = z.object({
   assetId: z.string().min(1, 'Asset is required'),
   accountId: z.string().min(1, 'Account is required'),
-  amount: z.string().refine((v) => !isNaN(parseFloat(v)) && parseFloat(v) >= 0, 'Must be a non-negative number'),
+  amount: z.string().refine((v) => /^\d*(\.\d*)?$/.test(v.trim()) && /\d/.test(v), 'Must be a non-negative number'),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -55,12 +55,12 @@ export function HoldingForm({
   accounts,
   decimals = DEFAULT_DECIMALS,
 }: HoldingFormProps) {
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, reset, setValue, setError, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       assetId: initial?.assetId ?? '',
       accountId: initial?.accountId ?? '',
-      amount: initial ? String(holdingToDecimal(initial.amount, initial.decimals)) : '',
+      amount: initial ? rawToDecimalString(initial.amount, initial.decimals) : '',
     },
   })
 
@@ -69,17 +69,26 @@ export function HoldingForm({
       reset({
         assetId: initial?.assetId ?? '',
         accountId: initial?.accountId ?? '',
-        amount: initial ? String(holdingToDecimal(initial.amount, initial.decimals)) : '',
+        amount: initial ? rawToDecimalString(initial.amount, initial.decimals) : '',
       })
     }
   }, [open, initial, reset])
 
   function submit(values: FormValues) {
     const assetDecimals = initial?.decimals ?? decimals
+    // Exact text-to-integer, no float: an unedited save of 1234.567890123456789012
+    // used to go out as "1.2345678901234568e+21".
+    let amountRaw: string
+    try {
+      amountRaw = decimalStringToRaw(values.amount, assetDecimals)
+    } catch (e) {
+      setError('amount', { message: e instanceof Error ? e.message : 'Invalid amount' })
+      return
+    }
     onSubmit({
       assetId: values.assetId,
       accountId: values.accountId,
-      amountRaw: decimalToHolding(parseFloat(values.amount), assetDecimals),
+      amountRaw,
       decimals: assetDecimals,
     })
   }

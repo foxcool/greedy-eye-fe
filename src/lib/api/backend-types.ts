@@ -372,6 +372,42 @@ export function holdingToDecimal(amount: string | undefined | null, decimals: nu
 
 // Converts decimal number to int64 holding amount string.
 // e.g. decimalToHolding(0.0114, 8) → "1140000"
+//
+// Goes through the plain decimal text of the number rather than multiplying
+// it: value * 10^decimals leaves float range for any 18-decimal token over
+// ~1000 units and prints "1.2e+21", which is not an amount. Anything that
+// starts from TEXT a person typed should use decimalStringToRaw directly and
+// skip the float altogether.
 export function decimalToHolding(value: number, decimals: number): string {
-  return Math.round(value * Math.pow(10, decimals)).toString()
+  return decimalStringToRaw(value.toFixed(Math.min(decimals, 100)), decimals)
+}
+
+// rawToDecimalString renders a raw amount exactly: "1234567890123456789012"
+// at 18 decimals is "1234.567890123456789012", with no float in between and
+// trailing zeros of the fraction dropped. For a field a person edits — what
+// it shows is what an unedited save sends back.
+export function rawToDecimalString(raw: string | undefined | null, decimals: number): string {
+  if (!raw) return '0'
+  const negative = raw.startsWith('-')
+  const digits = (negative ? raw.slice(1) : raw).padStart(decimals + 1, '0')
+  const whole = digits.slice(0, digits.length - decimals).replace(/^0+(?=\d)/, '')
+  const fraction = decimals > 0 ? digits.slice(digits.length - decimals).replace(/0+$/, '') : ''
+  return (negative ? '-' : '') + whole + (fraction ? '.' + fraction : '')
+}
+
+// decimalStringToRaw is the inverse, exactly: "1234.567890123456789012" at 18
+// decimals is "1234567890123456789012". It refuses rather than rounds — more
+// fraction digits than the asset carries, or anything that is not a plain
+// non-negative decimal, is an error for the caller to show.
+export function decimalStringToRaw(value: string, decimals: number): string {
+  const text = value.trim()
+  const m = /^(\d*)(?:\.(\d*))?$/.exec(text)
+  if (!m || (m[1] === '' && (m[2] ?? '') === '')) {
+    throw new Error(`"${value}" is not a non-negative decimal number`)
+  }
+  const fraction = (m[2] ?? '').replace(/0+$/, '')
+  if (fraction.length > decimals) {
+    throw new Error(`at most ${decimals} digits after the point for this asset`)
+  }
+  return BigInt((m[1] || '0') + fraction.padEnd(decimals, '0')).toString()
 }

@@ -19,9 +19,6 @@ export interface ListAssetsOptions {
   pageToken?: string
   // Filter by scam-filtering identity verdict; drives the Quarantine view.
   identityVerdict?: IdentityVerdict
-  // Exactly these assets. The read for "label what I hold": the catalogue is
-  // thousands of rows of airdropped litter, and none of it is needed for that.
-  ids?: string[]
   // Server-side text search: symbol prefix, name substring, exact id or bound
   // contract address.
   query?: string
@@ -53,6 +50,8 @@ export async function listAssets(opts: ListAssetsOptions = {}): Promise<Asset[]>
 }
 
 // listAssetsByIds reads exactly the named assets, in requests the server accepts.
+// It is the ONLY id read: listAssets takes no ids on purpose, since an id
+// option it ignored would page the whole catalogue in.
 // An empty list asks for nothing — it must not fall through to "no filter",
 // which would page the whole catalogue in.
 export async function listAssetsByIds(ids: string[]): Promise<Asset[]> {

@@ -54,8 +54,11 @@ export function PricesView() {
   const { data: priceResult, isLoading: pricesLoading } = usePrices()
   const prices = priceResult?.prices
 
-  const [selectedId, setSelectedId] = useState<string | undefined>()
-  const selected = assets.find((a) => a.id === selectedId)
+  // The selection is kept as the asset itself, not looked up in the visible
+  // list: switching between your assets and search results must not cost the
+  // chart its label while it still plots the same asset.
+  const [selected, setSelected] = useState<Asset | undefined>()
+  const selectedId = selected?.id
   const selectedLabel = selected?.symbol?.toUpperCase() ?? selected?.name
 
   return (
@@ -107,7 +110,7 @@ export function PricesView() {
                 return (
                   <TableRow
                     key={asset.id}
-                    onClick={() => setSelectedId(asset.id)}
+                    onClick={() => setSelected(asset)}
                     className={`cursor-pointer ${isSelected ? 'bg-secondary' : ''}`}
                   >
                     <TableCell className="font-medium">

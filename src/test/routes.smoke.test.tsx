@@ -47,6 +47,16 @@ const routes: Record<string, () => Promise<PageModule>> = {
   '/login': () => import('@/app/login/page'),
 }
 
+// The catalogue is never loaded whole (personal-1asm): every ListAssets a page
+// sends names the assets it wants or a search, never neither.
+function catalogueLoads(): Record<string, unknown>[] {
+  return vi
+    .mocked(fetch)
+    .mock.calls.filter(([input]) => String(input).includes('/ListAssets'))
+    .map(([, init]) => JSON.parse(String(init?.body ?? '{}')))
+    .filter((body) => !body.ids && !body.query)
+}
+
 describe('every route renders on an empty instance', () => {
   for (const [path, load] of Object.entries(routes)) {
     it(path, async () => {
@@ -76,6 +86,7 @@ describe('every route renders on an empty instance', () => {
       window.removeEventListener('error', onError)
 
       expect(errors).toEqual([])
+      expect(catalogueLoads(), `${path} asked for the whole catalogue`).toEqual([])
       expect(container.textContent?.length ?? 0).toBeGreaterThan(0)
       expect(screen.queryByText(/something went wrong/i), `${path} rendered its error boundary`).toBeNull()
     })

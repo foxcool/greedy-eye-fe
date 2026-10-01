@@ -1,8 +1,12 @@
 'use client'
 
-import { useState } from 'react'
-import { useAssets } from '@/hooks/use-assets'
+import { useMemo, useState } from 'react'
+import { useAssetSearch } from '@/hooks/use-assets'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
+import { useHeldAssets } from '@/hooks/use-held-assets'
 import { usePrices } from '@/hooks/use-prices'
+import { Input } from '@/components/ui/input'
+import type { Asset } from '@/lib/api/backend-types'
 import { formatCurrency, formatPercentage } from '@/lib/mocks'
 import { changeColor } from '@/components/macro'
 import {
@@ -28,13 +32,33 @@ function priceFor(
   return prices[assetId]
 }
 
+// One server page of search results; past it the reader narrows the search.
+const SEARCH_LIMIT = 200
+
 export function PricesView() {
-  const { data: assets = [], isLoading: assetsLoading } = useAssets()
+  // What the reader holds by default, and the catalogue only through a search.
+  // This page used to render every catalogue row — 7175 on prod — and could
+  // hold the main thread long enough for the browser to stop answering
+  // (personal-1asm).
+  const held = useHeldAssets()
+  const [search, setSearch] = useState('')
+  const query = useDebouncedValue(search, 300)
+  const searching = query.trim().length >= 2
+  const results = useAssetSearch(searching ? query : '', undefined, SEARCH_LIMIT)
+  const heldAssets = useMemo(
+    () => (held.data ?? []).map((r) => r.asset).filter((a): a is Asset => Boolean(a)),
+    [held.data]
+  )
+  const assets = searching ? (results.data?.assets ?? []) : heldAssets
+  const assetsLoading = searching ? results.isLoading : held.isLoading
   const { data: priceResult, isLoading: pricesLoading } = usePrices()
   const prices = priceResult?.prices
 
-  const [selectedId, setSelectedId] = useState<string | undefined>()
-  const selected = assets.find((a) => a.id === selectedId)
+  // The selection is kept as the asset itself, not looked up in the visible
+  // list: switching between your assets and search results must not cost the
+  // chart its label while it still plots the same asset.
+  const [selected, setSelected] = useState<Asset | undefined>()
+  const selectedId = selected?.id
   const selectedLabel = selected?.symbol?.toUpperCase() ?? selected?.name
 
   return (
@@ -51,11 +75,24 @@ export function PricesView() {
       <PriceHistoryChart assetId={selectedId} assetLabel={selectedLabel} />
 
       <div>
-        <h2 className="text-lg font-medium text-foreground mb-4">Assets</h2>
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <h2 className="text-lg font-medium text-foreground">{searching ? 'Search results' : 'Your assets'}</h2>
+          <Input
+            placeholder="Search the catalogue by name, symbol or contract…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="md:max-w-sm"
+          />
+        </div>
+        {searching && results.data?.truncated && (
+          <p className="mb-2 text-xs text-muted-foreground">
+            More assets match than one search returns — narrow it.
+          </p>
+        )}
         {assetsLoading ? (
           <p className="text-muted-foreground">Loading assets…</p>
         ) : assets.length === 0 ? (
-          <p className="text-muted-foreground">No assets yet.</p>
+          <p className="text-muted-foreground">{searching ? 'No assets match.' : 'You hold no assets yet.'}</p>
         ) : (
           <Table>
             <TableHeader>
@@ -73,7 +110,7 @@ export function PricesView() {
                 return (
                   <TableRow
                     key={asset.id}
-                    onClick={() => setSelectedId(asset.id)}
+                    onClick={() => setSelected(asset)}
                     className={`cursor-pointer ${isSelected ? 'bg-secondary' : ''}`}
                   >
                     <TableCell className="font-medium">

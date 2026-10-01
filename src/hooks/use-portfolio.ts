@@ -16,7 +16,7 @@ import {
 } from '@/lib/mocks'
 import type { PortfolioSummary, AllocationSlice, ValuationCoverage } from '@/lib/types/portfolio-view'
 import { listPortfolios, listHoldings, listAccounts, calculatePortfolioValue } from '@/lib/api/portfolio-api'
-import { listAssets } from '@/lib/api/assets-api'
+import { listAssetsByIds } from '@/lib/api/assets-api'
 import { fetchPortfolioPriceMap } from '@/lib/api/price-map'
 import { buildRawHoldings } from '@/lib/api/adapters'
 import { holdingToDecimal, type PortfolioValueResponse } from '@/lib/api/backend-types'
@@ -72,17 +72,22 @@ export function usePortfolio() {
 
         // Fetch all data in parallel. listHoldings is scoped by portfolioId when set.
         // Target allocations are per-portfolio, so only fetch the rule when scoped.
-        const [holdings, accounts, assets, beValues, priceResult, rules] = await Promise.all([
+        const [holdings, accounts, beValues, priceResult, rules] = await Promise.all([
           listHoldings(portfolioId ? { portfolioId } : {}),
           listAccounts(),
-          // The whole catalogue — thousands of rows, fifteen pages. Read through
-          // the same cache entry useAssets() fills, so a page that shows both the
-          // summary and the asset list pays for it once.
-          qc.ensureQueryData({ queryKey: ['assets', undefined], queryFn: () => listAssets() }),
           Promise.all(valuedPortfolios.map(p => calculatePortfolioValue(p.id, 'usd').catch(() => null))),
           fetchPortfolioPriceMap(valuedPortfolios.map(p => p.id)),
           portfolioId ? listRules({ portfolioId }).catch(() => []) : Promise.resolve([]),
         ])
+        // Only the assets these holdings point at. This read used to be the
+        // whole catalogue — over seven thousand rows of mostly airdropped
+        // litter, fifteen pages — to label a few hundred positions
+        // (personal-1asm). Same cache key useAssetsByIds builds.
+        const heldIds = [...new Set(holdings.map(h => h.assetId))].sort()
+        const assets = await qc.ensureQueryData({
+          queryKey: ['assets', 'ids', heldIds],
+          queryFn: () => listAssetsByIds(heldIds),
+        })
 
         const rawHoldings = buildRawHoldings(holdings, accounts, assets)
         // Targets come from the portfolio's target_allocation rule (keyed by backend

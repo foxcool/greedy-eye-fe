@@ -63,7 +63,7 @@ function Signals({ signals }: { signals?: Record<string, number> }) {
  * touches their total. The catalogue flags thousands of airdropped tokens nobody
  * here owns; listing those first is what made the old page unusable.
  */
-export function ReviewTab({ rows, catalogueFlagged }: { rows: HeldAsset[]; catalogueFlagged: number }) {
+export function ReviewTab({ rows }: { rows: HeldAsset[] }) {
   const { isAdmin } = useAuth()
   const setVerdict = useSetAssetVerdict()
   const [filter, setFilter] = useState<Filter>('awaiting')
@@ -173,8 +173,8 @@ export function ReviewTab({ rows, catalogueFlagged }: { rows: HeldAsset[]; catal
       )}
 
       <p className="text-xs text-muted-foreground">
-        The catalogue flags {catalogueFlagged.toLocaleString('en-US')} assets in total, most of
-        them airdrops nobody here holds —{' '}
+        The catalogue flags far more assets than you hold, most of them airdrops nobody here
+        holds —{' '}
         <Link href="/assets?tab=catalog&verdict=flagged" className="underline underline-offset-2 hover:text-primary">
           browse them in the catalogue
         </Link>

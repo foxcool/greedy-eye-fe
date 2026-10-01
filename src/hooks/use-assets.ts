@@ -8,6 +8,8 @@ import {
   getLatestPrice,
   getPricingStatus,
   listAssets,
+  listAssetsByIds,
+  searchAssets,
   setAssetVerdict,
   updateAsset,
   type AddRiskFlagInput,
@@ -19,6 +21,37 @@ export function useAssets(opts?: ListAssetsOptions) {
   return useQuery({
     queryKey: ['assets', opts],
     queryFn: () => listAssets(opts),
+  })
+}
+
+// useAssetsByIds reads the named assets only. The key is the sorted id list, so
+// the same set asked in a different order is one cache entry.
+export function useAssetsByIds(ids: string[] | undefined) {
+  const key = ids ? [...new Set(ids)].sort() : undefined
+  return useQuery({
+    queryKey: ['assets', 'ids', key],
+    queryFn: () => listAssetsByIds(key ?? []),
+    enabled: key !== undefined,
+  })
+}
+
+// useAssetSearch runs a server-side search, one page per verdict. Disabled
+// until there is something to search for: an empty search box is not a
+// request for the catalogue.
+export function useAssetSearch(query: string, verdicts: IdentityVerdict[] | undefined, pageSize: number) {
+  const q = query.trim()
+  const enabled = q.length >= 2 || (verdicts !== undefined && verdicts.length > 0)
+  return useQuery({
+    queryKey: ['assets', 'search', q, verdicts, pageSize],
+    enabled,
+    queryFn: async () => {
+      const pages = await Promise.all(
+        (verdicts?.length ? verdicts : [undefined]).map((identityVerdict) =>
+          searchAssets({ query: q || undefined, identityVerdict, pageSize })
+        )
+      )
+      return { assets: pages.flatMap((p) => p.assets), truncated: pages.some((p) => p.truncated) }
+    },
   })
 }
 

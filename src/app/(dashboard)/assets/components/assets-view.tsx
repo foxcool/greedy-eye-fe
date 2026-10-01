@@ -52,7 +52,7 @@ export function AssetsView() {
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
   }
 
-  const { data: held, assets, totalValue, isLoading, isValuing, error } = useHeldAssets()
+  const { data: held, totalValue, isLoading, isValuing, error } = useHeldAssets()
   const create = useCreateAsset()
   const [createOpen, setCreateOpen] = useState(false)
 
@@ -62,11 +62,9 @@ export function AssetsView() {
     return {
       mine: rows.length,
       review: rows.filter((r) => isFlagged(r.asset) && !isHumanVerdict(r.asset?.verdictSource)).length,
-      catalog: assets?.length ?? 0,
-      catalogueFlagged: (assets ?? []).filter((a) => isFlagged(a)).length,
       unpriced: rows.filter((r) => r.state !== 'excluded' && r.unpriced).length,
     }
-  }, [held, assets])
+  }, [held])
 
   if (DEMO_MODE) {
     return (
@@ -111,7 +109,7 @@ export function AssetsView() {
 
       {error ? (
         <p className="text-destructive">Failed to load assets.</p>
-      ) : isLoading || !held || !assets ? (
+      ) : isLoading || !held ? (
         <div className="space-y-2">
           <div className="h-9 w-72 animate-pulse rounded-lg bg-muted" />
           <div className="h-64 animate-pulse rounded-lg bg-muted" />
@@ -130,23 +128,18 @@ export function AssetsView() {
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="catalog">
-              Catalog{' '}
-              <span className="ml-1.5 tabular-nums opacity-60">
-                {counts.catalog.toLocaleString('en-US')}
-              </span>
-            </TabsTrigger>
+            {/* No count: knowing the catalogue's size meant loading all of it. */}
+            <TabsTrigger value="catalog">Catalog</TabsTrigger>
           </TabsList>
 
           <TabsContent value="mine" className="mt-4">
             <MineTab rows={held} isValuing={isValuing} />
           </TabsContent>
           <TabsContent value="review" className="mt-4">
-            <ReviewTab rows={held} catalogueFlagged={counts.catalogueFlagged} />
+            <ReviewTab rows={held} />
           </TabsContent>
           <TabsContent value="catalog" className="mt-4">
             <CatalogTab
-              assets={assets}
               heldIds={heldIds}
               verdict={verdict}
               onVerdictChange={(v) => setParams({ verdict: v === 'any' ? undefined : v })}

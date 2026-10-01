@@ -19,14 +19,19 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { usePrices } from '@/hooks/use-prices'
-import type { Asset } from '@/lib/api/backend-types'
-import { ASSET_TYPE_LABELS, assetTypeLabel, isFlagged } from '@/lib/assets/catalogue'
+import { useAssetSearch } from '@/hooks/use-assets'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
+import type { IdentityVerdict } from '@/lib/api/backend-types'
+import { ASSET_TYPE_LABELS, assetTypeLabel } from '@/lib/assets/catalogue'
 import { contractRef } from '@/lib/assets/links'
 import { formatCurrency } from '@/lib/mocks'
 import { AssetCell, ExternalAssetLink } from './asset-cell'
 import { ContractLink } from './contract-link'
 
 const PAGE_SIZE = 50
+// One server page per verdict asked. Past it the reader narrows the search; a
+// catalogue of airdropped litter is not something to page through.
+const SEARCH_LIMIT = 200
 
 export type VerdictFilter = 'any' | 'flagged' | 'legit' | 'suspect' | 'impersonation' | 'scam' | 'unknown'
 
@@ -44,24 +49,26 @@ export function isVerdictFilter(v: string | null): v is VerdictFilter {
   return VERDICT_FILTERS.some((f) => f.value === v)
 }
 
-function matchesVerdict(a: Asset, f: VerdictFilter): boolean {
-  if (f === 'any') return true
-  if (f === 'flagged') return isFlagged(a)
-  return (a.identityVerdict ?? 'unknown') === f
+// The verdicts a filter asks the server for; undefined means "no verdict filter".
+function verdictsFor(f: VerdictFilter): IdentityVerdict[] | undefined {
+  if (f === 'any') return undefined
+  if (f === 'flagged') return ['suspect', 'impersonation', 'scam']
+  return [f]
 }
 
 /**
  * The whole catalogue — every asset any user or sync ever created, shared by all.
  * It is a lookup, not a list to read: the reader arrives with a name or a
- * contract in mind, so the search box leads and rows are paged.
+ * contract in mind, so the search box leads, and the search runs on the server.
+ * The catalogue itself never comes to the browser: over seven thousand rows on
+ * prod, growing by hundreds a month, and loading it blocked the renderer
+ * (personal-1asm).
  */
 export function CatalogTab({
-  assets,
   heldIds,
   verdict,
   onVerdictChange,
 }: {
-  assets: Asset[]
   heldIds: ReadonlySet<string>
   verdict: VerdictFilter
   onVerdictChange: (v: VerdictFilter) => void
@@ -71,22 +78,15 @@ export function CatalogTab({
   const [type, setType] = useState<string>('any')
   const [page, setPage] = useState(0)
 
-  const q = search.trim().toLowerCase()
+  const query = useDebouncedValue(search, 300)
+  const verdicts = verdictsFor(verdict)
+  const results = useAssetSearch(query, verdicts, SEARCH_LIMIT)
+  const asked = results.fetchStatus !== 'idle' || results.data !== undefined
   const filtered = useMemo(
     () =>
-      assets
+      (results.data?.assets ?? [])
+        // Type is narrowed here, over at most one page per verdict.
         .filter((a) => type === 'any' || a.type === type)
-        .filter((a) => matchesVerdict(a, verdict))
-        .filter(
-          (a) =>
-            !q ||
-            a.id.toLowerCase() === q ||
-            a.name.toLowerCase().includes(q) ||
-            (a.symbol ?? '').toLowerCase().includes(q) ||
-            // A pasted contract address finds its token, which is how a
-            // lookalike is usually chased down.
-            (contractRef(a)?.address.toLowerCase() ?? '').includes(q)
-        )
         // Held first, then by symbol: in a catalogue of airdrop noise, the rows
         // that are yours are the ones worth landing on.
         .sort(
@@ -94,7 +94,7 @@ export function CatalogTab({
             Number(heldIds.has(b.id)) - Number(heldIds.has(a.id)) ||
             (a.symbol ?? a.name).localeCompare(b.symbol ?? b.name)
         ),
-    [assets, type, verdict, q, heldIds]
+    [results.data, type, heldIds]
   )
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
@@ -155,7 +155,15 @@ export function CatalogTab({
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {!asked ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          Type at least two characters, or pick a verdict, to search the catalogue.
+        </p>
+      ) : results.isLoading ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">Searching…</p>
+      ) : results.error ? (
+        <p className="py-8 text-center text-sm text-destructive">Search failed: {results.error.message}</p>
+      ) : filtered.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">No assets match.</p>
       ) : (
         <>
@@ -222,6 +230,7 @@ export function CatalogTab({
             <span className="tabular-nums">
               {current * PAGE_SIZE + 1}–{current * PAGE_SIZE + visible.length} of{' '}
               {filtered.length.toLocaleString('en-US')}
+              {results.data?.truncated && ' — more match than one search returns; narrow it'}
             </span>
             {pages > 1 && (
               <div className="flex gap-2">

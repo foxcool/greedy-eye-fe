@@ -6,7 +6,7 @@ import { listHoldings } from '@/lib/api/portfolio-api'
 import { holdingToDecimal, type Account, type Asset } from '@/lib/api/backend-types'
 import { USE_BACKEND } from '@/lib/config/data-source'
 import { useAccounts } from './use-accounts'
-import { useAssets } from './use-assets'
+import { useAssetsByIds } from './use-assets'
 import { usePortfolio } from './use-portfolio'
 
 /**
@@ -51,7 +51,6 @@ export interface HeldAsset {
  * holdings — is added back from the raw holdings list, without a value.
  */
 export function useHeldAssets() {
-  const assetsQuery = useAssets()
   const accountsQuery = useAccounts()
   const holdingsQuery = useQuery({
     // Under ['holdings'] so every holding mutation that invalidates that prefix
@@ -60,6 +59,9 @@ export function useHeldAssets() {
     queryFn: () => listHoldings(),
     enabled: USE_BACKEND,
   })
+  // The assets the reader holds and nothing else; the catalogue is searched,
+  // never loaded (personal-1asm).
+  const assetsQuery = useAssetsByIds(holdingsQuery.data?.map((h) => h.assetId))
   const summaryQuery = usePortfolio()
 
   const data = useMemo<HeldAsset[] | undefined>(() => {

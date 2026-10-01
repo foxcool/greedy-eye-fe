@@ -19,7 +19,16 @@ export interface ListAssetsOptions {
   pageToken?: string
   // Filter by scam-filtering identity verdict; drives the Quarantine view.
   identityVerdict?: IdentityVerdict
+  // Exactly these assets. The read for "label what I hold": the catalogue is
+  // thousands of rows of airdropped litter, and none of it is needed for that.
+  ids?: string[]
+  // Server-side text search: symbol prefix, name substring, exact id or bound
+  // contract address.
+  query?: string
 }
+
+// The server caps an id list per request.
+const MAX_IDS_PER_REQUEST = 1000
 
 // Backend pages default to 20 rows — follow nextPageToken to fetch everything.
 export async function listAssets(opts: ListAssetsOptions = {}): Promise<Asset[]> {
@@ -29,6 +38,7 @@ export async function listAssets(opts: ListAssetsOptions = {}): Promise<Asset[]>
     const body: Record<string, unknown> = { pageSize: opts.pageSize ?? 500 }
     if (opts.tags?.length) body['tags'] = opts.tags
     if (opts.identityVerdict) body['identityVerdict'] = opts.identityVerdict
+    if (opts.query) body['query'] = opts.query
     if (pageToken) body['pageToken'] = pageToken
 
     const res = await apiClient.post<{ assets?: Asset[]; nextPageToken?: string }>(
@@ -40,6 +50,46 @@ export async function listAssets(opts: ListAssetsOptions = {}): Promise<Asset[]>
     pageToken = res.nextPageToken
   }
   return all
+}
+
+// listAssetsByIds reads exactly the named assets, in requests the server accepts.
+// An empty list asks for nothing — it must not fall through to "no filter",
+// which would page the whole catalogue in.
+export async function listAssetsByIds(ids: string[]): Promise<Asset[]> {
+  const unique = [...new Set(ids)]
+  if (unique.length === 0) return []
+  const chunks: string[][] = []
+  for (let i = 0; i < unique.length; i += MAX_IDS_PER_REQUEST) {
+    chunks.push(unique.slice(i, i + MAX_IDS_PER_REQUEST))
+  }
+  const pages = await Promise.all(
+    chunks.map((chunk) =>
+      apiClient
+        .post<{ assets?: Asset[] }>(RPC('ListAssets'), { ids: chunk, pageSize: chunk.length })
+        .then((res) => res.assets ?? [])
+    )
+  )
+  return pages.flat()
+}
+
+export interface AssetSearchPage {
+  assets: Asset[]
+  // More matched than one page carries: the reader should narrow the search
+  // rather than be handed thousands of rows.
+  truncated: boolean
+}
+
+// searchAssets is ONE page of a server-side search — never a loop to the end.
+export async function searchAssets(opts: {
+  query?: string
+  identityVerdict?: IdentityVerdict
+  pageSize: number
+}): Promise<AssetSearchPage> {
+  const body: Record<string, unknown> = { pageSize: opts.pageSize }
+  if (opts.query) body['query'] = opts.query
+  if (opts.identityVerdict) body['identityVerdict'] = opts.identityVerdict
+  const res = await apiClient.post<{ assets?: Asset[]; nextPageToken?: string }>(RPC('ListAssets'), body)
+  return { assets: res.assets ?? [], truncated: Boolean(res.nextPageToken) }
 }
 
 // getAsset is the only RPC that loads external refs and risk flags. Every other

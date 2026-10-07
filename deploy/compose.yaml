@@ -19,6 +19,9 @@ services:
       # Empty string disables the mock from .env.local (mounted with sources) —
       # the container always uses real auth via Traefik forwardAuth.
       NEXT_PUBLIC_MOCK_USER_ID: ""
+      # The host the stand is browsed at; next dev refuses its dev resources to
+      # any other origin (see allowedDevOrigins in next.config.ts).
+      EYE_DOMAIN: ${EYE_DOMAIN:-eye-dev.localhost}
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"

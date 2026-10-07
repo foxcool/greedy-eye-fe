@@ -12,7 +12,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { AccountForm, type AccountFormResult } from './account-form'
-import { useAccounts, useCreateAccount, useUpdateAccount, useUpdateSystemScopes, useDeleteAccount } from '@/hooks/use-accounts'
+import { useAccounts, useAccountHealth, useCreateAccount, useUpdateAccount, useUpdateSystemScopes, useDeleteAccount } from '@/hooks/use-accounts'
+import { HealthCell, HealthNotice } from './account-health'
 import { usePortfolios } from '@/hooks/use-portfolios'
 import { useAuth } from '@/lib/auth/auth-context'
 import { syncAccount } from '@/lib/api/portfolio-api'
@@ -50,6 +51,7 @@ function scopesEqual(a: string[] = [], b: string[] = []): boolean {
 export function AccountList() {
   const { data: accounts = [], isLoading, error } = useAccounts()
   const { data: portfolios = [] } = usePortfolios()
+  const health = useAccountHealth()
   const { isAdmin } = useAuth()
   const create = useCreateAccount()
   const update = useUpdateAccount()
@@ -97,11 +99,20 @@ export function AccountList() {
   }
 
   const portfolioById = Object.fromEntries(portfolios.map((p) => [p.id, p.name]))
+  // A failed refetch keeps the last data; rows must not say OK while the
+  // notice says health is unknown.
+  const healthById = health.isError
+    ? {}
+    : Object.fromEntries((health.data?.accounts ?? []).map((h) => [h.accountId, h]))
 
   const queryClient = useQueryClient()
   const sync = useMutation({
     mutationFn: (id: string) => syncAccount(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['holdings'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['holdings'] })
+      // A sync can end a chain's run of failures or a sweep deferral.
+      queryClient.invalidateQueries({ queryKey: ['accounts', 'health'] })
+    },
   })
 
   const [createOpen, setCreateOpen] = useState(false)
@@ -123,6 +134,8 @@ export function AccountList() {
         <Button onClick={() => setCreateOpen(true)}>Add Account</Button>
       </div>
 
+      <HealthNotice data={health.data} failed={health.isError} />
+
       {accounts.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-12 text-center">
           <p className="text-muted-foreground mb-4">No accounts yet.</p>
@@ -134,6 +147,7 @@ export function AccountList() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead>Health</TableHead>
               <TableHead>Capabilities</TableHead>
               <TableHead>Portfolio</TableHead>
               <TableHead>Description</TableHead>
@@ -148,6 +162,9 @@ export function AccountList() {
                   <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-secondary text-secondary-foreground">
                     {TYPE_LABELS[a.type] ?? a.type}
                   </span>
+                </TableCell>
+                <TableCell>
+                  <HealthCell health={healthById[a.id]} />
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">

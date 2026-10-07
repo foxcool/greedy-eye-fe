@@ -87,6 +87,50 @@ export interface Account {
   updatedAt: string
 }
 
+// How much of its job an account or price source is doing. The state of a
+// whole is decided by the server as the worst of its reasons; a client must not
+// re-derive it. UNKNOWN means the instance cannot tell and is not OK.
+export type HealthState =
+  | 'HEALTH_STATE_UNSPECIFIED'
+  | 'HEALTH_STATE_OK'
+  | 'HEALTH_STATE_DEGRADED'
+  | 'HEALTH_STATE_UNUSABLE'
+  | 'HEALTH_STATE_UNKNOWN'
+
+export interface HealthReason {
+  kind: string
+  // Written by the server and safe to show as is.
+  message: string
+  chain?: string
+  failures?: number
+  since?: string
+  // When the account or source will be tried again.
+  until?: string
+  // Upstream error text; only ever present for admins.
+  detail?: string
+}
+
+export interface AccountHealth {
+  accountId: string
+  accountName: string
+  state: HealthState
+  reasons?: HealthReason[]
+}
+
+// A price source the caller's prices depend on, named by provider only: a
+// shared source is served by an account the caller may not own.
+export interface SourceHealth {
+  provider: string
+  state: HealthState
+  reasons?: HealthReason[]
+}
+
+export interface AccountHealthResponse {
+  accounts?: AccountHealth[]
+  sources?: SourceHealth[]
+  sourcesState?: HealthState
+}
+
 // Prefix the backend uses when masking write-only secret values.
 export const SECRET_MASK_PREFIX = '••••'
 

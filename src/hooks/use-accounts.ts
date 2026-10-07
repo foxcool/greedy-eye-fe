@@ -1,11 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createAccount, deleteAccount, listAccounts, updateAccount, updateSystemScopes } from '@/lib/api/portfolio-api'
+import { createAccount, deleteAccount, getAccountHealth, listAccounts, updateAccount, updateSystemScopes } from '@/lib/api/portfolio-api'
 import type { Account } from '@/lib/api/backend-types'
 
 export function useAccounts() {
   return useQuery({
     queryKey: ['accounts'],
     queryFn: listAccounts,
+  })
+}
+
+// Health is derived from the accounts, so it lives under their key: every
+// mutation that invalidates ['accounts'] refreshes it too.
+export function useAccountHealth() {
+  return useQuery({
+    queryKey: ['accounts', 'health'],
+    queryFn: getAccountHealth,
+    retry: false,
   })
 }
 

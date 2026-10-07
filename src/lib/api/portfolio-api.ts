@@ -1,7 +1,7 @@
 // Connect-RPC endpoints for PortfolioService.
 // All methods use POST to /eye.v1.PortfolioService/<Method>.
 import { apiClient } from './client'
-import type { Portfolio, Holding, Account, PortfolioValueResponse, Provider } from './backend-types'
+import type { Portfolio, Holding, Account, AccountHealthResponse, PortfolioValueResponse, Provider } from './backend-types'
 
 const RPC = (method: string) => `/eye.v1.PortfolioService/${method}`
 
@@ -131,6 +131,12 @@ export async function listAccounts(): Promise<Account[]> {
     pageSize: 500,
   })
   return res.accounts ?? []
+}
+
+// Computed on read by the backend from what its resolver, rate limiter and
+// sweep already keep; there is nothing to page.
+export async function getAccountHealth(): Promise<AccountHealthResponse> {
+  return apiClient.post<AccountHealthResponse>(RPC('GetAccountHealth'), {})
 }
 
 export async function createAccount(input: {

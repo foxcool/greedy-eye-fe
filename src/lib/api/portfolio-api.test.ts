@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { updateAccount, updatePortfolio } from './portfolio-api'
+import { getAccountHealth, updateAccount, updatePortfolio } from './portfolio-api'
 
 // The backend writes exactly the fields the update mask names, and rejects a
 // mask-less update. Before the mask was derived from the payload, an update
@@ -35,5 +35,14 @@ describe('update requests', () => {
   it('refuses an update with nothing in it rather than sending a bare mask', async () => {
     await expect(updatePortfolio('p1', {})).rejects.toThrow(/at least one field/)
     expect(fetch).not.toHaveBeenCalled()
+  })
+})
+
+describe('account health', () => {
+  it('asks the portfolio service for every account at once', async () => {
+    await getAccountHealth()
+    const { url, body } = lastRequest()
+    expect(url).toContain('/eye.v1.PortfolioService/GetAccountHealth')
+    expect(body).toEqual({})
   })
 })

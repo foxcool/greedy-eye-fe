@@ -18,6 +18,7 @@ import { usePortfolios } from '@/hooks/use-portfolios'
 import { useAuth } from '@/lib/auth/auth-context'
 import { syncAccount } from '@/lib/api/portfolio-api'
 import type { Account } from '@/lib/api/backend-types'
+import { scopeSteps } from '@/lib/accounts/scope-steps'
 
 const TYPE_LABELS: Record<string, string> = {
   ACCOUNT_TYPE_WALLET: 'Wallet',
@@ -43,10 +44,6 @@ const CAPABILITY_BADGES: Record<string, string> = {
 // to refresh a brokerage account was a direct RPC call — the capability was
 // declared, the button was not there, and nothing said why (personal-c1nz).
 const SYNCABLE_TYPES = ['ACCOUNT_TYPE_WALLET', 'ACCOUNT_TYPE_EXCHANGE', 'ACCOUNT_TYPE_BROKER']
-
-function scopesEqual(a: string[] = [], b: string[] = []): boolean {
-  return a.length === b.length && a.every((x) => b.includes(x))
-}
 
 export function AccountList() {
   const { data: accounts = [], isLoading, error } = useAccounts()
@@ -81,21 +78,20 @@ export function AccountList() {
     )
   }
 
-  function submitEdit(target: Account, values: AccountFormResult) {
+  // System scopes travel in their own admin-only RPC with an explicit update
+  // mask, ordered around the account update by scopeSteps: a shared capability
+  // being unticked used to fail, because the scope still named it.
+  async function submitEdit(target: Account, values: AccountFormResult) {
     const { systemScopes, ...fields } = values
-    update.mutate(
-      { id: target.id, ...fields },
-      {
-        onSuccess: () => {
-          // System scopes travel in their own admin-only RPC with an explicit
-          // update mask; only fire it when the toggles actually changed.
-          if (isAdmin && !scopesEqual(systemScopes, target.systemScopes)) {
-            updateScopes.mutate({ id: target.id, systemScopes })
-          }
-          setEditTarget(null)
-        },
-      }
-    )
+    const steps = isAdmin ? scopeSteps(target.systemScopes ?? [], systemScopes) : {}
+    try {
+      if (steps.before) await updateScopes.mutateAsync({ id: target.id, systemScopes: steps.before })
+      await update.mutateAsync({ id: target.id, ...fields })
+      if (steps.after) await updateScopes.mutateAsync({ id: target.id, systemScopes: steps.after })
+      setEditTarget(null)
+    } catch {
+      // The global mutation toast reports it; the form stays open to retry.
+    }
   }
 
   const portfolioById = Object.fromEntries(portfolios.map((p) => [p.id, p.name]))

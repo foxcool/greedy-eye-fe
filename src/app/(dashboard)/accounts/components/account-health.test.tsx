@@ -43,6 +43,23 @@ describe('HealthCell', () => {
     expect(screen.getByText('subscan API status 404 for hydration')).toBeInTheDocument()
   })
 
+  it('shows a disabled account as its owner\'s choice, with since when', () => {
+    render(
+      <HealthCell
+        health={{
+          accountId: 'off',
+          accountName: 'lapsed',
+          state: 'HEALTH_STATE_DISABLED',
+          reasons: [{ kind: 'HEALTH_REASON_KIND_DISABLED', message: 'disabled by its owner', since: '2026-10-08T05:08:34Z' }],
+        }}
+      />
+    )
+    const badge = screen.getByRole('button', { name: 'Disabled' })
+    expect(badge.className).not.toMatch(/red|yellow/)
+    fireEvent.click(badge)
+    expect(screen.getByText(/disabled by its owner — since/)).toBeInTheDocument()
+  })
+
   it('names an unusable account as such', () => {
     render(<HealthCell health={{ ...degraded, state: 'HEALTH_STATE_UNUSABLE' }} />)
     expect(screen.getByRole('button', { name: 'Unusable' })).toBeInTheDocument()

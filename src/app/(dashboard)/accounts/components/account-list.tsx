@@ -12,7 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { AccountForm, type AccountFormResult } from './account-form'
-import { useAccounts, useAccountHealth, useCreateAccount, useUpdateAccount, useUpdateSystemScopes, useDeleteAccount } from '@/hooks/use-accounts'
+import { useAccounts, useAccountHealth, useCreateAccount, useUpdateAccount, useUpdateSystemScopes, useDeleteAccount, useSetAccountDisabled } from '@/hooks/use-accounts'
 import { HealthCell, HealthNotice } from './account-health'
 import { usePortfolios } from '@/hooks/use-portfolios'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -54,6 +54,7 @@ export function AccountList() {
   const update = useUpdateAccount()
   const updateScopes = useUpdateSystemScopes()
   const remove = useDeleteAccount()
+  const standDown = useSetAccountDisabled()
 
   // Deleting is two-stage on purpose. The first attempt leaves positions
   // alone; only if the backend refuses because they exist do we name how many
@@ -152,7 +153,11 @@ export function AccountList() {
           </TableHeader>
           <TableBody>
             {accounts.map((a) => (
-              <TableRow key={a.id}>
+              <TableRow
+                key={a.id}
+                data-disabled={a.disabled ? 'true' : undefined}
+                className={a.disabled ? 'opacity-60' : undefined}
+              >
                 <TableCell className="font-medium">{a.name}</TableCell>
                 <TableCell>
                   <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-secondary text-secondary-foreground">
@@ -190,7 +195,7 @@ export function AccountList() {
                 <TableCell className="text-muted-foreground">{a.description ?? '—'}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
-                    {SYNCABLE_TYPES.includes(a.type ?? '') && (
+                    {SYNCABLE_TYPES.includes(a.type ?? '') && !a.disabled && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -201,6 +206,21 @@ export function AccountList() {
                         }}
                       >
                         {sync.isPending && syncingId === a.id ? 'Syncing…' : 'Sync'}
+                      </Button>
+                    )}
+                    {/* Manual accounts have nothing external to stand down; the
+                        backend refuses the flag for them. */}
+                    {a.type !== 'ACCOUNT_TYPE_MANUAL' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        title={a.disabled
+                          ? 'Use this account again: syncs and price lookups resume'
+                          : 'Stop using this account without deleting its key or positions'}
+                        disabled={standDown.isPending && standDown.variables?.id === a.id}
+                        onClick={() => standDown.mutate({ id: a.id, disabled: !a.disabled })}
+                      >
+                        {a.disabled ? 'Enable' : 'Disable'}
                       </Button>
                     )}
                     <Button variant="outline" size="sm" onClick={() => setEditTarget(a)}>

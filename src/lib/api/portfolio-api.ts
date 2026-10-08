@@ -185,6 +185,16 @@ export async function updateSystemScopes(
   })
 }
 
+// The flag travels alone, under its own mask: standing an account down is a
+// gesture of its own, never a side effect of saving the form. The backend
+// refuses it for manual accounts and clears the sweep's deferral when it moves.
+export async function setAccountDisabled(id: string, disabled: boolean): Promise<Account> {
+  return apiClient.post<Account>(RPC('UpdateAccount'), {
+    account: { id, disabled },
+    updateMask: 'disabled',
+  })
+}
+
 // --- Providers ---
 
 // listProviders describes the external services an account can be created

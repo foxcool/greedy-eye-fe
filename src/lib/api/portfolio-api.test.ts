@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getAccountHealth, updateAccount, updatePortfolio } from './portfolio-api'
+import { getAccountHealth, setAccountDisabled, updateAccount, updatePortfolio } from './portfolio-api'
 
 // The backend writes exactly the fields the update mask names, and rejects a
 // mask-less update. Before the mask was derived from the payload, an update
@@ -35,6 +35,17 @@ describe('update requests', () => {
   it('refuses an update with nothing in it rather than sending a bare mask', async () => {
     await expect(updatePortfolio('p1', {})).rejects.toThrow(/at least one field/)
     expect(fetch).not.toHaveBeenCalled()
+  })
+})
+
+describe('standing an account down', () => {
+  it('sends the flag alone under its own mask, both ways', async () => {
+    await setAccountDisabled('a1', true)
+    expect(lastRequest().body).toEqual({ account: { id: 'a1', disabled: true }, updateMask: 'disabled' })
+
+    // false is a real value here, not an absent field: enabling must name it.
+    await setAccountDisabled('a1', false)
+    expect(lastRequest().body).toEqual({ account: { id: 'a1', disabled: false }, updateMask: 'disabled' })
   })
 })
 

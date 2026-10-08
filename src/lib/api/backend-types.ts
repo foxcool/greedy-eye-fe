@@ -83,6 +83,10 @@ export interface Account {
   capabilities?: AccountCapability[]
   // Admin-managed subset of capabilities shared system-wide.
   systemScopes?: AccountCapability[]
+  // Stood down by its owner: keeps its key and holdings, but nothing syncs it
+  // or takes it as a provider. Absent means active (proto3 omits false).
+  disabled?: boolean
+  disabledAt?: string
   createdAt: string
   updatedAt: string
 }
@@ -96,6 +100,8 @@ export type HealthState =
   | 'HEALTH_STATE_DEGRADED'
   | 'HEALTH_STATE_UNUSABLE'
   | 'HEALTH_STATE_UNKNOWN'
+  // The owner's choice, not a fault.
+  | 'HEALTH_STATE_DISABLED'
 
 export interface HealthReason {
   kind: string

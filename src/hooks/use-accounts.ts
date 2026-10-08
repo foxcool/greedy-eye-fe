@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createAccount, deleteAccount, getAccountHealth, listAccounts, updateAccount, updateSystemScopes } from '@/lib/api/portfolio-api'
+import { createAccount, deleteAccount, getAccountHealth, listAccounts, setAccountDisabled, updateAccount, updateSystemScopes } from '@/lib/api/portfolio-api'
 import type { Account } from '@/lib/api/backend-types'
 
 export function useAccounts() {
@@ -45,6 +45,16 @@ export function useUpdateSystemScopes() {
   return useMutation({
     mutationFn: ({ id, systemScopes }: { id: string; systemScopes: Account['systemScopes'] }) =>
       updateSystemScopes(id, systemScopes),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['accounts'] }),
+  })
+}
+
+// Invalidating ['accounts'] also reaches ['accounts', 'health']: the row and
+// its badge change together.
+export function useSetAccountDisabled() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, disabled }: { id: string; disabled: boolean }) => setAccountDisabled(id, disabled),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['accounts'] }),
   })
 }

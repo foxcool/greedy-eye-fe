@@ -14,6 +14,12 @@ const STATE_STYLES: Partial<Record<HealthState, { label: string; className: stri
     label: 'Unusable',
     className: 'bg-red-500/15 text-red-700 dark:text-red-400 ring-red-500/30',
   },
+  // A stood-down account is its owner's decision, not a fault: neutral, so it
+  // does not teach anyone to look past the red ones.
+  HEALTH_STATE_DISABLED: {
+    label: 'Disabled',
+    className: 'bg-muted text-muted-foreground ring-border',
+  },
 }
 
 function ReasonList({ reasons }: { reasons: HealthReason[] }) {
@@ -23,6 +29,7 @@ function ReasonList({ reasons }: { reasons: HealthReason[] }) {
         <li key={i}>
           {r.message}
           {r.until && <> — next try {new Date(r.until).toLocaleString()}</>}
+          {r.kind === 'HEALTH_REASON_KIND_DISABLED' && r.since && <> — since {new Date(r.since).toLocaleString()}</>}
           {r.detail && <div className="font-mono break-words opacity-80">{r.detail}</div>}
         </li>
       ))}

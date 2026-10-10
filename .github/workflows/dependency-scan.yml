@@ -1,0 +1,65 @@
+name: Dependency scan
+
+# npm audit reads a remote advisory database, so its verdict depends on the
+# date as well as on the diff: the same lockfile can pass today and fail
+# tomorrow. Running it on every PR blamed whoever pushed next for news about
+# the world. So the scan runs nightly against main and reports to the
+# repository, and a PR runs it only when it changes the dependency tree —
+# the one case where a red result is about that PR.
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths: [ package.json, package-lock.json ]
+  pull_request:
+    paths: [ package.json, package-lock.json ]
+
+jobs:
+  npm-audit:
+    name: Scan dependencies for vulnerabilities
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      # Audit only what ships to production. All current dev-only advisories are
+      # in the lint/codegen toolchain (eslint, typescript-eslint, redocly,
+      # openapi-typescript) and never reach the runtime bundle. Notably the
+      # brace-expansion DoS (GHSA-mh99-v99m-4gvg) is patched only in 5.0.8,
+      # whose CJS export shape breaks minimatch@3 used by eslint — so bumping it
+      # would break the toolchain without improving what we deploy.
+      - run: npm audit --omit=dev --audit-level=high
+
+  report:
+    name: Open an issue for a red nightly scan
+    needs: npm-audit
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      # One open issue per outage: a scan that stays red adds a comment
+      # instead of a new issue every night.
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Nightly dependency scan is red"
+          num=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number')
+          if [ -n "$num" ]; then
+            gh issue comment "$num" --body "Still red: $RUN_URL"
+          else
+            gh issue create --title "$title" --body "npm audit found a new advisory against main: $RUN_URL
+
+          Bump the lockfile on its own branch; unrelated PRs are not blocked by this."
+          fi

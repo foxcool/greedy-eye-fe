@@ -6,27 +6,6 @@ on:
   pull_request:
 
 jobs:
-  npm-audit:
-    name: Scan dependencies for vulnerabilities
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-
-      - run: npm ci
-      # Audit only what ships to production. All current dev-only advisories are
-      # in the lint/codegen toolchain (eslint, typescript-eslint, redocly,
-      # openapi-typescript) and never reach the runtime bundle. Notably the
-      # brace-expansion DoS (GHSA-mh99-v99m-4gvg) is patched only in 5.0.8,
-      # whose CJS export shape breaks minimatch@3 used by eslint — so bumping it
-      # would break the toolchain without improving what we deploy.
-      - run: npm audit --omit=dev --audit-level=high
-
   gitleaks:
     name: Scan for committed secrets
     runs-on: ubuntu-latest

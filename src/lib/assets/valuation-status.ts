@@ -43,7 +43,13 @@ export type ValuationStatus =
   | { kind: 'undisclosed'; disclosed: number; total: number }
   | { kind: 'unknown' }
 
-export type UnpricedReason = 'NO_QUOTE' | 'THIN_MARKET' | 'NEVER_PRICED' | 'NO_CROSS_RATE' | 'OTHER'
+export type UnpricedReason =
+  | 'NO_QUOTE'
+  | 'THIN_MARKET'
+  | 'NEVER_PRICED'
+  | 'NO_CROSS_RATE'
+  | 'AMBIGUOUS_TICKER'
+  | 'OTHER'
 
 /**
  * What is known about asking this asset's price sources, at the moment the
@@ -91,6 +97,8 @@ function parseReason(raw: string | undefined): UnpricedReason {
       return 'NEVER_PRICED'
     case 'UNPRICED_REASON_NO_CROSS_RATE':
       return 'NO_CROSS_RATE'
+    case 'UNPRICED_REASON_AMBIGUOUS_TICKER':
+      return 'AMBIGUOUS_TICKER'
     default:
       // A reason this build does not know about still has to read as prose. The
       // one thing it must never do is surface `UNPRICED_REASON_SOMETHING` to a
@@ -168,7 +176,10 @@ export function holdingStatus(
         // Reached only when NO position in this asset made the disclosure list
         // — the asset-level fallback above already covers the case where one
         // did. All that is left here is the pricing record, which says whether
-        // a price was ever stored but not why the valuation refused it.
+        // a price was ever stored but not why the valuation refused it. A
+        // contested ticker is checked first: it is never asked, so its record
+        // can carry no attempt at all and must not read as silence.
+        if (pricing.status.ambiguousTicker) return { kind: 'unpriced', reason: 'AMBIGUOUS_TICKER' }
         return pricing.status.everPriced
           ? { kind: 'priced-unusable', lastAskedAt: pricing.status.lastAskedAt }
           : {
@@ -234,7 +245,8 @@ export function pricingEvidence(pricing: PricingLookup): string | undefined {
     case 'never-asked':
       return 'No price source has ever been asked about this asset. Nothing here is a statement about the market — it is a gap in coverage.'
     case 'known': {
-      const { everPriced, firstAskedAt, lastAskedAt, sourcesAsked } = pricing.status
+      const { everPriced, firstAskedAt, lastAskedAt, sourcesAsked, ambiguousTicker } = pricing.status
+      if (ambiguousTicker) return AMBIGUOUS_EXPLANATION
       if (everPriced) {
         const last = since(lastAskedAt)
         return `Sources have answered for this asset before, so a price row exists — just not one this page could read against your display currency.${
@@ -248,6 +260,14 @@ export function pricingEvidence(pricing: PricingLookup): string | undefined {
     }
   }
 }
+
+/**
+ * Why a contested ticker has no price. The asset shown may be the real one —
+ * the claimant that keeps the price is the older one that was priced first —
+ * so the remedy names a comparison, not a target.
+ */
+const AMBIGUOUS_EXPLANATION =
+  'Another asset on the same market claims this ticker and holds the price, so no source is asked about this one. This one may be the real asset: compare the two, and quarantining whichever is the impostor settles it.'
 
 /** "asked since 3 August across 4 sources", as much of it as is known. */
 function evidence(askedSince: string | undefined, sourcesAsked: number | undefined): string {
@@ -288,6 +308,8 @@ export function statusExplanation(status: ValuationStatus): string {
           return 'Not valued: this asset has a current price, but in a currency we hold no exchange rate to your display currency for. The position is priced; only the conversion is missing.'
         case 'THIN_MARKET':
           return 'Not valued: a quote exists, but the market behind it is too thin to sell this position at that price. The quote is real; the money is not.'
+        case 'AMBIGUOUS_TICKER':
+          return `Not valued: ${AMBIGUOUS_EXPLANATION}`
         case 'NEVER_PRICED':
           return `Not valued: every source available has been asked and none has ever answered.${evidence(status.askedSince, status.sourcesAsked)} That is evidence of silence, not a delisting verdict.`
         case 'OTHER':

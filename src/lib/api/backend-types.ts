@@ -361,7 +361,7 @@ export interface UnpricedHolding {
   assetId?: string
   symbol?: string
   // UNPRICED_REASON_NO_QUOTE | UNPRICED_REASON_THIN_MARKET | UNPRICED_REASON_NEVER_PRICED
-  //   | UNPRICED_REASON_NO_CROSS_RATE
+  //   | UNPRICED_REASON_NO_CROSS_RATE | UNPRICED_REASON_AMBIGUOUS_TICKER
   reason?: string
   // Since when the sources have been asked without answering. Set only with
   // NEVER_PRICED, where it turns "no price" into "no price for eleven days".
@@ -374,7 +374,8 @@ export interface UnpricedHolding {
 //
 // An asset nobody has ever asked about is ABSENT from the response, not
 // zero-filled: an empty record would read as "asked, nothing came back", which
-// is the opposite statement.
+// is the opposite statement. The one exception is a contested ticker, present
+// with `ambiguousTicker` set and possibly no attempt fields at all.
 export interface AssetPricingStatus {
   assetId: string
   // True when some source has answered at some point. Such an asset has a price
@@ -385,6 +386,10 @@ export interface AssetPricingStatus {
   // Four sources silent for a week is a different statement from one source
   // silent for a week.
   sourcesAsked?: number
+  // Another live asset on the same market claims this ticker and holds the
+  // price, so no source is asked about this one. A fact about the catalogue,
+  // not the attempt log.
+  ambiguousTicker?: boolean
 }
 
 // --- Analytics (heatmap) ---

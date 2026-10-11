@@ -2,6 +2,13 @@
 @import "./tokens.css";
 
 /*
+ * dark: follows the app's theme switch (next-themes puts .dark on <html>),
+ * not the OS. Tailwind v4 defaults to prefers-color-scheme, which left
+ * dark: utilities out of step with the tokens whenever the two disagreed.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
  * Theme variables live in tokens.css:
  * 2 styles (ledger | observatory) × 2 schemes (light | dark),
  * selected via html[data-style="…"] + .dark class (next-themes).

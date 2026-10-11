@@ -133,7 +133,6 @@ export function usePortfolio() {
     // Backend refreshes stored prices on its own schedule (~15 min); polling
     // faster than that is waste. Focus/reconnect refetches keep the page fresh.
     staleTime: 5 * 60 * 1000,
-    retry: 2,
   })
 }
 

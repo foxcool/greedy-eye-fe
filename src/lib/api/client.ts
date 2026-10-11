@@ -2,13 +2,11 @@ interface ApiClientOptions {
   baseURL?: string
   headers?: HeadersInit
   timeout?: number
-  retries?: number
 }
 
 interface RequestOptions extends Omit<RequestInit, 'body'> {
   params?: Record<string, string | number | boolean>
   timeout?: number
-  retries?: number
 }
 
 class ApiError extends Error {
@@ -43,7 +41,6 @@ class ApiClient {
   private baseURL: string
   private defaultHeaders: HeadersInit
   private defaultTimeout: number
-  private defaultRetries: number
 
   constructor(options: ApiClientOptions = {}) {
     // Use ?? (not ||) so that empty string is preserved as "use relative URLs"
@@ -61,7 +58,6 @@ class ApiClient {
     // syncs aborted at 10.005s server-side, mid-write. A long call passes its
     // own timeout; see syncAccount.
     this.defaultTimeout = options.timeout ?? 10000  // 10s — fail fast
-    this.defaultRetries = options.retries ?? 1      // 1 retry — avoid 90s hangs
   }
 
   private async doFetch<T>(url: string, options: RequestInit, timeoutMs = this.defaultTimeout): Promise<T> {
@@ -90,42 +86,22 @@ class ApiClient {
     return text ? JSON.parse(text) : ({} as T)
   }
 
-  private async fetchWithRetry<T>(
-    url: string,
-    options: RequestInit,
-    retries: number,
-    timeoutMs?: number
-  ): Promise<T> {
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        return await this.doFetch<T>(url, options, timeoutMs)
-      } catch (error) {
-        // On 401: attempt token refresh once, then retry the original request
-        if (error instanceof ApiError && error.status === 401 && attempt === 0) {
-          const { refreshToken } = await import('@/lib/auth/api')
-          const refreshed = await refreshToken()
-          if (refreshed) continue
-          // Refresh failed — redirect to login via registered handler (respects basePath)
-          redirectToLogin()
-          throw error
-        }
+  // No retries here: that is TanStack Query's job, the only layer that knows a
+  // read from a write (see query-client.ts). The one re-send is after a 401
+  // refresh — the server rejected the call without running it, so it is safe
+  // even for a write.
+  private async fetchWithRefresh<T>(url: string, options: RequestInit, timeoutMs?: number): Promise<T> {
+    try {
+      return await this.doFetch<T>(url, options, timeoutMs)
+    } catch (error) {
+      if (!(error instanceof ApiError && error.status === 401)) throw error
 
-        // Don't retry other 4xx errors
-        if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
-          throw error
-        }
-
-        if (attempt < retries) {
-          const backoff = Math.min(1000 * Math.pow(2, attempt), 5000)
-          await new Promise(resolve => setTimeout(resolve, backoff))
-          continue
-        }
-
-        throw error
-      }
+      const { refreshToken } = await import('@/lib/auth/api')
+      if (await refreshToken()) return this.doFetch<T>(url, options, timeoutMs)
+      // Refresh failed — redirect to login via registered handler (respects basePath)
+      redirectToLogin()
+      throw error
     }
-
-    throw new Error('Retry limit exceeded')
   }
 
   private buildURL(path: string, params?: Record<string, string | number | boolean>): string {
@@ -148,49 +124,49 @@ class ApiClient {
   }
 
   async get<T>(path: string, options: RequestOptions = {}): Promise<T> {
-    const { params, retries = this.defaultRetries, timeout, ...fetchOptions } = options
+    const { params, timeout, ...fetchOptions } = options
     const url = this.buildURL(path, params)
 
-    return this.fetchWithRetry<T>(url, {
+    return this.fetchWithRefresh<T>(url, {
       method: 'GET',
       headers: { ...this.defaultHeaders, ...fetchOptions.headers },
       ...fetchOptions,
-    }, retries, timeout)
+    }, timeout)
   }
 
   async post<T>(path: string, data?: unknown, options: RequestOptions = {}): Promise<T> {
-    const { params, retries = this.defaultRetries, timeout, ...fetchOptions } = options
+    const { params, timeout, ...fetchOptions } = options
     const url = this.buildURL(path, params)
 
-    return this.fetchWithRetry<T>(url, {
+    return this.fetchWithRefresh<T>(url, {
       method: 'POST',
       headers: { ...this.defaultHeaders, ...fetchOptions.headers },
       body: data ? JSON.stringify(data) : undefined,
       ...fetchOptions,
-    }, retries, timeout)
+    }, timeout)
   }
 
   async put<T>(path: string, data?: unknown, options: RequestOptions = {}): Promise<T> {
-    const { params, retries = this.defaultRetries, timeout, ...fetchOptions } = options
+    const { params, timeout, ...fetchOptions } = options
     const url = this.buildURL(path, params)
 
-    return this.fetchWithRetry<T>(url, {
+    return this.fetchWithRefresh<T>(url, {
       method: 'PUT',
       headers: { ...this.defaultHeaders, ...fetchOptions.headers },
       body: data ? JSON.stringify(data) : undefined,
       ...fetchOptions,
-    }, retries, timeout)
+    }, timeout)
   }
 
   async delete<T>(path: string, options: RequestOptions = {}): Promise<T> {
-    const { params, retries = this.defaultRetries, timeout, ...fetchOptions } = options
+    const { params, timeout, ...fetchOptions } = options
     const url = this.buildURL(path, params)
 
-    return this.fetchWithRetry<T>(url, {
+    return this.fetchWithRefresh<T>(url, {
       method: 'DELETE',
       headers: { ...this.defaultHeaders, ...fetchOptions.headers },
       ...fetchOptions,
-    }, retries, timeout)
+    }, timeout)
   }
 }
 

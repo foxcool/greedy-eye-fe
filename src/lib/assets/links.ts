@@ -56,6 +56,20 @@ export function coingeckoRef(asset: Asset): AssetExternalRef | undefined {
 }
 
 /**
+ * The bindings through which a position on `chain` routes to this asset.
+ *
+ * A sync resolves a token by its contract's ref before anything else, so this is
+ * the answer to "why is this balance counted as this asset". A list, not one:
+ * nothing stops two contracts on one chain from being bound to the same asset,
+ * and that is exactly the collapse an operator comes here to find. An empty chain
+ * (exchange, manual) is not chain-scoped and has no binding to show.
+ */
+export function refsOnChain(asset: Asset, chain: string | undefined): AssetExternalRef[] {
+  if (!chain) return []
+  return (asset.externalRefs ?? []).filter((r) => r.source === `${ONCHAIN_SOURCE}${chain}`)
+}
+
+/**
  * Block explorer per chain, keyed exactly as the backend keys chains — the same
  * strings that appear in `onchain:<chain>` refs and on `holding.chain`
  * (`internal/adapter/coingecko/contracts.go`). Keeping the two lists spelled the

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { listAssetsByIds, searchAssets } from './assets-api'
+import { deleteAssetExternalRef, listAssetsByIds, searchAssets } from './assets-api'
 
 // The catalogue is thousands of rows of airdropped litter (personal-1asm).
 // These reads exist so a page never has to load it: what goes on the wire is
@@ -37,5 +37,13 @@ describe('searchAssets', () => {
     const page = await searchAssets({ query: 'usdt', identityVerdict: 'scam', pageSize: 200 })
     expect(bodies()).toEqual([{ query: 'usdt', identityVerdict: 'scam', pageSize: 200 }])
     expect(page.truncated).toBe(true)
+  })
+})
+
+describe('deleteAssetExternalRef', () => {
+  it('names both sides of the binding, never the ref id alone', async () => {
+    await deleteAssetExternalRef('asset-1', 'ref-1')
+    expect(vi.mocked(fetch).mock.calls[0][0]).toContain('DeleteAssetExternalRef')
+    expect(bodies()).toEqual([{ assetId: 'asset-1', id: 'ref-1' }])
   })
 })

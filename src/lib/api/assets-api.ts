@@ -159,6 +159,14 @@ export async function deleteAssetRiskFlag(assetId: string, id: string): Promise<
   await apiClient.post(RPC('DeleteAssetRiskFlag'), { assetId, id })
 }
 
+// deleteAssetExternalRef detaches one binding from an asset. Admin-only on the
+// backend. Both sides are sent on purpose: the server deletes only when the ref
+// still belongs to this asset, so a stale card cannot detach a contract that was
+// rebound elsewhere in the meantime.
+export async function deleteAssetExternalRef(assetId: string, id: string): Promise<void> {
+  await apiClient.post(RPC('DeleteAssetExternalRef'), { assetId, id })
+}
+
 // --- Prices ---
 
 export async function getLatestPrice(assetId: string, baseAssetId = 'usd'): Promise<StoredPrice> {

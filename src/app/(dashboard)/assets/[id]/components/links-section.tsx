@@ -1,6 +1,10 @@
 'use client'
 
+import { useState, type ReactNode } from 'react'
+import { Button } from '@/components/ui/button'
 import { CopyButton } from '@/components/ui/copy-button'
+import { useDeleteAssetExternalRef } from '@/hooks/use-assets'
+import { useAuth } from '@/lib/auth/auth-context'
 import {
   coingeckoRef,
   coingeckoUrl,
@@ -19,11 +23,13 @@ function RefRow({
   address,
   href,
   origin,
+  action,
 }: {
   label: string
   address: string
   href?: string
   origin?: string
+  action?: ReactNode
 }) {
   return (
     <div className="flex items-center justify-between gap-3 px-4 py-3">
@@ -50,12 +56,76 @@ function RefRow({
           </span>
         )}
         <CopyButton value={address} label="Copy" />
+        {action}
       </div>
     </div>
   )
 }
 
+/**
+ * Detaching a binding, for the one case where the binding was the error: a
+ * contract bound to a ticker it does not belong to routes every sync to this
+ * asset and lends it this asset's price.
+ *
+ * Nothing moves on click. The next sync of an account holding that contract
+ * resolves it on its own merits — an unrecognised contract lands on its own
+ * isolated asset, out of the total until something prices it — and the stale
+ * row here is zeroed as absent from the snapshot. Moving holdings from the UI
+ * would mean deciding what the balance is, the same judgement that went wrong.
+ */
+function UnbindAction({
+  assetId,
+  refId,
+  confirming,
+  onConfirming,
+}: {
+  assetId: string
+  refId: string
+  confirming: boolean
+  onConfirming: (on: boolean) => void
+}) {
+  const unbind = useDeleteAssetExternalRef()
+  if (!confirming) {
+    return (
+      <Button variant="ghost" size="sm" onClick={() => onConfirming(true)}>
+        Unbind
+      </Button>
+    )
+  }
+  return (
+    <div className="flex gap-2">
+      <Button
+        variant="destructive"
+        size="sm"
+        disabled={unbind.isPending}
+        onClick={() =>
+          unbind.mutate({ assetId, id: refId }, { onSuccess: () => onConfirming(false) })
+        }
+      >
+        Confirm
+      </Button>
+      <Button variant="outline" size="sm" onClick={() => onConfirming(false)}>
+        Cancel
+      </Button>
+    </div>
+  )
+}
+
 export function LinksSection({ asset }: { asset: Asset }) {
+  // Admin-only on the backend, like the verdict: a binding is catalogue
+  // identity, shared by every user. Not rendered for anyone else.
+  const { isAdmin } = useAuth()
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const unbindAction = (refId: string) =>
+    isAdmin ? (
+      <UnbindAction
+        assetId={asset.id}
+        refId={refId}
+        confirming={confirmId === refId}
+        onConfirming={(on) => setConfirmId(on ? refId : null)}
+      />
+    ) : undefined
+
   const onchain: AssetExternalRef[] = (asset.externalRefs ?? []).filter((r) =>
     r.source.startsWith(ONCHAIN)
   )
@@ -88,6 +158,7 @@ export function LinksSection({ asset }: { asset: Asset }) {
                 address={ref.ref}
                 href={explorerUrl(chain, ref.ref)}
                 origin={ref.origin}
+                action={unbindAction(ref.id)}
               />
             )
           })}
@@ -105,9 +176,17 @@ export function LinksSection({ asset }: { asset: Asset }) {
               address={gecko.ref}
               href={coingeckoUrl(gecko.ref)}
               origin={gecko.origin}
+              action={unbindAction(gecko.id)}
             />
           )}
         </div>
+      )}
+      {isAdmin && onchain.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Unbinding a contract does not move any balance. The next sync of an account holding it
+          resolves the contract again on its own merits; a contract no venue lists under this
+          ticker gets its own asset and stays out of the total until something prices it.
+        </p>
       )}
     </Section>
   )

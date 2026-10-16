@@ -3,6 +3,7 @@ import {
   addAssetRiskFlag,
   createAsset,
   deleteAsset,
+  deleteAssetExternalRef,
   deleteAssetRiskFlag,
   getAsset,
   getLatestPrice,
@@ -169,6 +170,18 @@ export function useDeleteAssetRiskFlag() {
   return useMutation({
     mutationFn: ({ assetId, id }: { assetId: string; id: string }) =>
       deleteAssetRiskFlag(assetId, id),
+    onSuccess: (_void, { assetId }) =>
+      qc.invalidateQueries({ queryKey: ['asset', assetId] }),
+  })
+}
+
+export function useDeleteAssetExternalRef() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ assetId, id }: { assetId: string; id: string }) =>
+      deleteAssetExternalRef(assetId, id),
+    // Refs ride on the single-asset query only. Holdings do not move here: the
+    // next sync re-resolves the contract, so there is nothing else to refetch.
     onSuccess: (_void, { assetId }) =>
       qc.invalidateQueries({ queryKey: ['asset', assetId] }),
   })

@@ -14,7 +14,8 @@ import { useHoldingsQuery, useUpdateHolding } from '@/hooks/use-holdings'
 import { useLatestPrice, usePricingStatus } from '@/hooks/use-assets'
 import { usePortfolio } from '@/hooks/use-portfolio'
 import { holdingToDecimal, type Asset } from '@/lib/api/backend-types'
-import { truncateAddress } from '@/lib/assets/links'
+import { refsOnChain, truncateAddress } from '@/lib/assets/links'
+import { scaleConflicts } from '@/lib/assets/scale-conflicts'
 import {
   holdingStatus,
   pricingLookup,
@@ -29,6 +30,39 @@ const ACCOUNT_TYPE_LABEL: Record<string, string> = {
   ACCOUNT_TYPE_EXCHANGE: 'Exchange',
   ACCOUNT_TYPE_MANUAL: 'Manual',
   ACCOUNT_TYPE_BROKER: 'Broker',
+}
+
+function BoundVia({
+  refs,
+  chainScoped,
+}: {
+  refs: ReturnType<typeof refsOnChain>
+  chainScoped: boolean
+}) {
+  if (!chainScoped) return <span className="text-muted-foreground">—</span>
+  if (refs.length === 0) {
+    // Not "native": the chain's own coin has no contract, but neither does a
+    // token matched by symbol before bindings existed. Saying which would be a
+    // guess.
+    return (
+      <span
+        className="text-muted-foreground"
+        title="no contract on this chain is bound to this asset"
+      >
+        no binding
+      </span>
+    )
+  }
+  return (
+    <span className="flex flex-col font-mono text-xs">
+      {refs.map((r) => (
+        <span key={r.id} title={r.ref}>
+          {truncateAddress(r.ref)}
+          <span className="ml-1 font-sans text-muted-foreground">{r.origin}</span>
+        </span>
+      ))}
+    </span>
+  )
 }
 
 export function HoldingsSection({ asset }: { asset: Asset }) {
@@ -52,9 +86,11 @@ export function HoldingsSection({ asset }: { asset: Asset }) {
 
   const pricing = pricingLookup(asset.id, pricingStatuses, pricingResolved)
 
-  // One asset cannot honestly have two scales. When it does, one of these rows
-  // was written by a different path and the quantities are not comparable.
-  const scales = new Set(holdings.map((h) => h.decimals))
+  // Scale is a property of a contract, not of an asset: bridged USDT is 6
+  // decimals on Ethereum and 18 on BSC, and an exchange reports its own. Only on
+  // ONE chain is a second scale proof that two different tokens were collapsed
+  // onto this identity.
+  const conflicts = scaleConflicts(holdings)
 
   // Deduplicated: three positions kept out of the total for the same reason are
   // one fact stated once. Repeating an identical sentence per row reads as three
@@ -83,6 +119,7 @@ export function HoldingsSection({ asset }: { asset: Asset }) {
               <TableRow>
                 <TableHead>Account</TableHead>
                 <TableHead>Chain</TableHead>
+                <TableHead>Bound via</TableHead>
                 <TableHead>Liquidity</TableHead>
                 <TableHead className="text-right">Quantity</TableHead>
                 <TableHead className="text-right">Value at last quote</TableHead>
@@ -120,6 +157,12 @@ export function HoldingsSection({ asset }: { asset: Asset }) {
                           off-chain
                         </span>
                       )}
+                    </TableCell>
+                    {/* The contract that routes this position to this asset —
+                        the thing to compare when two rows disagree on scale.
+                        Unbinding it lives under Links, next to the identity. */}
+                    <TableCell className="text-sm">
+                      <BoundVia refs={refsOnChain(asset, h.chain)} chainScoped={!!h.chain} />
                     </TableCell>
                     {/* Nor is empty liquidity a synonym for liquid. Without this
                         column two rows differing only by staked/liquid look like
@@ -168,13 +211,14 @@ export function HoldingsSection({ asset }: { asset: Asset }) {
             </TableBody>
           </Table>
 
-          {scales.size > 1 && (
-            <p className="text-sm text-destructive">
-              Two different scales are recorded for this asset ({[...scales].join(', ')}{' '}
-              decimals). One of these rows was written by a different path, and the quantities
-              are not comparable until that is reconciled.
+          {conflicts.map(({ chain, scales }) => (
+            <p key={chain} className="text-sm text-destructive">
+              On {chain}, this asset is recorded at two scales ({scales.join(', ')} decimals). One
+              contract has one scale, so two different tokens were collapsed onto this identity.
+              Compare the contracts under &ldquo;Bound via&rdquo;; an admin can unbind the wrong one
+              under Links, and the next sync splits it off.
             </p>
-          )}
+          ))}
 
           <div className="space-y-1">
             {explanations.map((text) => (

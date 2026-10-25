@@ -30,12 +30,10 @@ jobs:
           cache: npm
 
       - run: npm ci
-      # Audit only what ships to production. All current dev-only advisories are
-      # in the lint/codegen toolchain (eslint, typescript-eslint, redocly,
-      # openapi-typescript) and never reach the runtime bundle. Notably the
-      # brace-expansion DoS (GHSA-mh99-v99m-4gvg) is patched only in 5.0.8,
-      # whose CJS export shape breaks minimatch@3 used by eslint — so bumping it
-      # would break the toolchain without improving what we deploy.
+      # Audit only what ships to production. Dev-only advisories sit in the
+      # test/lint toolchain (currently vitest 3, patched only in the vitest 5
+      # major) and never reach the runtime bundle, so they must not turn the
+      # nightly scan red.
       - run: npm audit --omit=dev --audit-level=high
 
   report:

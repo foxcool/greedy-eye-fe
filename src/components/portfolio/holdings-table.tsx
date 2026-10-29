@@ -131,6 +131,11 @@ function HoldingRow({ holding, isExpanded, onToggle, showSources }: HoldingRowPr
               <span className="font-medium text-foreground">{holding.symbol}</span>
               <span className="text-muted-foreground truncate">{holding.name}</span>
             </AssetLink>
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {holding.sources.length === 1
+                ? holding.sources[0].name
+                : `${holding.sources.length} accounts`}
+            </span>
             {holding.unpriced && (
               <span
                 className="px-1.5 py-0.5 rounded text-[10px] uppercase font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400"

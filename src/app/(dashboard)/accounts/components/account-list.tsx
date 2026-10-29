@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import {
@@ -18,6 +19,7 @@ import { usePortfolios } from '@/hooks/use-portfolios'
 import { useAuth } from '@/lib/auth/auth-context'
 import { syncAccount } from '@/lib/api/portfolio-api'
 import type { Account } from '@/lib/api/backend-types'
+import { summarizeSync, describeSync } from '@/lib/accounts/sync-result'
 import { scopeSteps } from '@/lib/accounts/scope-steps'
 
 const TYPE_LABELS: Record<string, string> = {
@@ -105,7 +107,17 @@ export function AccountList() {
   const queryClient = useQueryClient()
   const sync = useMutation({
     mutationFn: (id: string) => syncAccount(id),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      // A 200 can still carry per-item problems; surface them, not a silent success.
+      const outcome = summarizeSync(res)
+      if (outcome.partial) {
+        const { title, detail } = describeSync(outcome)
+        toast.warning(title, {
+          description: detail,
+          duration: 15_000,
+          classNames: { description: 'whitespace-pre-line' },
+        })
+      }
       queryClient.invalidateQueries({ queryKey: ['holdings'] })
       // A sync can end a chain's run of failures or a sweep deferral.
       queryClient.invalidateQueries({ queryKey: ['accounts', 'health'] })

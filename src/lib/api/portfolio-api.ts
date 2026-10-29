@@ -221,7 +221,10 @@ export interface SyncAccountResponse {
   accountId: string
   assetsUpserted: number
   holdingsUpserted: number
-  errors: string[]
+  // protojson omits zero values: absent means none.
+  positionsSkipped?: number
+  holdingsZeroed?: number
+  errors?: string[]
 }
 
 // A sync fans out to a provider per chain and then rewrites the account's

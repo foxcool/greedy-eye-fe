@@ -58,6 +58,8 @@ Checks run inside the dev container (its `node_modules`), not on the host:
 make lint             # ESLint
 make typecheck        # tsc --noEmit
 make test             # vitest: unit, component and route smoke tests
+make test-e2e         # Playwright UI smoke (e2e/) in demo mode, no backend;
+                      # own image (Playwright's), RPCs faked in e2e/fixtures.ts
 make check            # typecheck + lint + test + build — run before committing
 ```
 

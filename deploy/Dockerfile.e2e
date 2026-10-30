@@ -1,0 +1,14 @@
+# Browsers and their system libraries come with the image; its tag must match
+# the exact @playwright/test version in package.json, or the runner looks for
+# a browser build the image does not have.
+FROM mcr.microsoft.com/playwright:v1.64.1-noble
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+# No COPY of the sources: compose mounts the working tree, and copying it would
+# drag a host node_modules (other OS, other binaries) over the one built here.
+
+CMD ["npx", "playwright", "test"]

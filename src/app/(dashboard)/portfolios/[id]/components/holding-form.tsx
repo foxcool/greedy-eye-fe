@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { AssetPicker, assetLabel } from '@/components/asset/asset-picker'
 import type { Account, Asset, Holding } from '@/lib/api/backend-types'
 import { decimalStringToRaw, rawToDecimalString } from '@/lib/api/backend-types'
 
@@ -38,7 +39,8 @@ interface HoldingFormProps {
   onSubmit: (values: { assetId: string; accountId: string; amountRaw: string; decimals: number }) => void
   isLoading?: boolean
   initial?: Holding
-  assets: Asset[]
+  /** The asset of `initial`, for its label; a new holding picks one by search. */
+  asset?: Asset
   accounts: Account[]
   decimals?: number
 }
@@ -51,7 +53,7 @@ export function HoldingForm({
   onSubmit,
   isLoading,
   initial,
-  assets,
+  asset,
   accounts,
   decimals = DEFAULT_DECIMALS,
 }: HoldingFormProps) {
@@ -64,8 +66,11 @@ export function HoldingForm({
     },
   })
 
+  const [picked, setPicked] = useState<Asset | undefined>()
+
   useEffect(() => {
     if (open) {
+      setPicked(undefined)
       reset({
         assetId: initial?.assetId ?? '',
         accountId: initial?.accountId ?? '',
@@ -93,10 +98,9 @@ export function HoldingForm({
     })
   }
 
-  const assetId = watch('assetId')
   const accountId = watch('accountId')
 
-  const selectedAsset = assets.find((a) => a.id === assetId)
+  const selectedAsset = initial ? asset : picked
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -107,22 +111,31 @@ export function HoldingForm({
         <form onSubmit={handleSubmit(submit)} className="space-y-4">
           <div className="space-y-1">
             <Label>Asset</Label>
-            <Select
-              value={assetId}
-              onValueChange={(v) => setValue('assetId', v)}
-              disabled={!!initial}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select asset…" />
-              </SelectTrigger>
-              <SelectContent>
-                {assets.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.symbol ? `${a.symbol} — ` : ''}{a.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {initial ? (
+              <p className="text-sm">{asset ? assetLabel(asset) : initial.assetId}</p>
+            ) : picked ? (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm">{assetLabel(picked)}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setPicked(undefined)
+                    setValue('assetId', '')
+                  }}
+                >
+                  Change
+                </Button>
+              </div>
+            ) : (
+              <AssetPicker
+                onSelect={(a) => {
+                  setPicked(a)
+                  setValue('assetId', a.id, { shouldValidate: true })
+                }}
+              />
+            )}
             {errors.assetId && <p className="text-sm text-destructive">{errors.assetId.message}</p>}
           </div>
 

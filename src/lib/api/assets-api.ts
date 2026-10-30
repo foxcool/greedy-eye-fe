@@ -13,45 +13,13 @@ const RPC = (method: string) => `/eye.v1.MarketDataService/${method}`
 
 // --- Assets ---
 
-export interface ListAssetsOptions {
-  tags?: string[]
-  pageSize?: number
-  pageToken?: string
-  // Filter by scam-filtering identity verdict; drives the Quarantine view.
-  identityVerdict?: IdentityVerdict
-  // Server-side text search: symbol prefix, name substring, exact id or bound
-  // contract address.
-  query?: string
-}
-
 // The server caps an id list per request.
 const MAX_IDS_PER_REQUEST = 1000
 
-// Backend pages default to 20 rows — follow nextPageToken to fetch everything.
-export async function listAssets(opts: ListAssetsOptions = {}): Promise<Asset[]> {
-  const all: Asset[] = []
-  let pageToken = opts.pageToken
-  for (let page = 0; page < 50; page++) {
-    const body: Record<string, unknown> = { pageSize: opts.pageSize ?? 500 }
-    if (opts.tags?.length) body['tags'] = opts.tags
-    if (opts.identityVerdict) body['identityVerdict'] = opts.identityVerdict
-    if (opts.query) body['query'] = opts.query
-    if (pageToken) body['pageToken'] = pageToken
-
-    const res = await apiClient.post<{ assets?: Asset[]; nextPageToken?: string }>(
-      RPC('ListAssets'),
-      body
-    )
-    all.push(...(res.assets ?? []))
-    if (!res.nextPageToken) break
-    pageToken = res.nextPageToken
-  }
-  return all
-}
-
+// The catalogue is never paged into the browser: an asset read either names
+// its ids (listAssetsByIds) or is one page of a search (searchAssets).
+//
 // listAssetsByIds reads exactly the named assets, in requests the server accepts.
-// It is the ONLY id read: listAssets takes no ids on purpose, since an id
-// option it ignored would page the whole catalogue in.
 // An empty list asks for nothing — it must not fall through to "no filter",
 // which would page the whole catalogue in.
 export async function listAssetsByIds(ids: string[]): Promise<Asset[]> {

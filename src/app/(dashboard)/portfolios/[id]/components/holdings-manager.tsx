@@ -13,7 +13,7 @@ import {
 import { HoldingForm } from './holding-form'
 import { useHoldingsQuery, useCreateHolding, useUpdateHolding, useDeleteHolding } from '@/hooks/use-holdings'
 import { useAccounts } from '@/hooks/use-accounts'
-import { useAssets } from '@/hooks/use-assets'
+import { useAssetsByIds } from '@/hooks/use-assets'
 import { holdingToDecimal } from '@/lib/api/backend-types'
 import { truncateAddress } from '@/lib/assets/links'
 import { AssetLink } from '@/components/asset/asset-link'
@@ -167,9 +167,13 @@ function AccountGroup({
 }
 
 export function HoldingsManager({ portfolioId }: HoldingsManagerProps) {
-  const { data: holdings = [], isLoading: holdingsLoading } = useHoldingsQuery({ portfolioId })
+  const holdingsQuery = useHoldingsQuery({ portfolioId })
+  const { data: holdings = [], isLoading: holdingsLoading } = holdingsQuery
   const { data: accounts = [], isLoading: accountsLoading } = useAccounts()
-  const { data: assets = [], isLoading: assetsLoading } = useAssets()
+  // Labels for what this portfolio holds; the add form searches the catalogue.
+  const { data: assets = [], isLoading: assetsLoading } = useAssetsByIds(
+    holdingsQuery.data?.map((h) => h.assetId)
+  )
   const create = useCreateHolding()
   const update = useUpdateHolding()
   const remove = useDeleteHolding()
@@ -179,7 +183,7 @@ export function HoldingsManager({ portfolioId }: HoldingsManagerProps) {
 
   const isLoading = holdingsLoading || accountsLoading || assetsLoading
 
-  const assetMap = new Map(assets.map((a) => [a.id, { symbol: a.symbol, name: a.name }]))
+  const assetMap = new Map(assets.map((a) => [a.id, a]))
 
   // Group holdings by accountId, preserving account order from accounts list
   const groups = accounts
@@ -258,7 +262,6 @@ export function HoldingsManager({ portfolioId }: HoldingsManagerProps) {
         open={addOpen}
         onOpenChange={setAddOpen}
         isLoading={create.isPending}
-        assets={assets}
         accounts={accounts}
         onSubmit={({ assetId, accountId, amountRaw, decimals }) =>
           create.mutate(
@@ -273,7 +276,7 @@ export function HoldingsManager({ portfolioId }: HoldingsManagerProps) {
         onOpenChange={(open) => { if (!open) setEditTarget(null) }}
         initial={editTarget ?? undefined}
         isLoading={update.isPending}
-        assets={assets}
+        asset={editTarget ? assetMap.get(editTarget.assetId) : undefined}
         accounts={accounts}
         onSubmit={({ amountRaw, decimals }) =>
           update.mutate(

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   addAssetRiskFlag,
   createAsset,
@@ -8,31 +8,25 @@ import {
   getAsset,
   getLatestPrice,
   getPricingStatus,
-  listAssets,
   listAssetsByIds,
   searchAssets,
   setAssetVerdict,
   updateAsset,
   type AddRiskFlagInput,
-  type ListAssetsOptions,
 } from '@/lib/api/assets-api'
 import type { Asset, IdentityVerdict } from '@/lib/api/backend-types'
 
-export function useAssets(opts?: ListAssetsOptions) {
-  return useQuery({
-    queryKey: ['assets', opts],
-    queryFn: () => listAssets(opts),
-  })
-}
-
 // useAssetsByIds reads the named assets only. The key is the sorted id list, so
-// the same set asked in a different order is one cache entry.
+// the same set asked in a different order is one cache entry. Adding one id is
+// a new key; the previous labels stay up meanwhile instead of the list going
+// back to "Loading…".
 export function useAssetsByIds(ids: string[] | undefined) {
   const key = ids ? [...new Set(ids)].sort() : undefined
   return useQuery({
     queryKey: ['assets', 'ids', key],
     queryFn: () => listAssetsByIds(key ?? []),
     enabled: key !== undefined,
+    placeholderData: keepPreviousData,
   })
 }
 

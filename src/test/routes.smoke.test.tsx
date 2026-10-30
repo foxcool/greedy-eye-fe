@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Suspense, type ReactNode } from 'react'
 import { AuthProvider } from '@/lib/auth/auth-context'
@@ -47,6 +48,19 @@ const routes: Record<string, () => Promise<PageModule>> = {
   '/login': () => import('@/app/login/page'),
 }
 
+// Pages whose asset pickers sit behind a tab or a dialog: an empty instance
+// renders none of them unless they are opened.
+const interactions: Record<string, () => Promise<void>> = {
+  '/portfolios/[id]': async () => {
+    await userEvent.click(await screen.findByRole('tab', { name: 'Holdings' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Add Holding' }))
+    await screen.findByRole('dialog')
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(await screen.findByRole('tab', { name: 'Settings' }))
+    await screen.findByText('Target allocation')
+  },
+}
+
 // The catalogue is never loaded whole (personal-1asm): every ListAssets a page
 // sends names the assets it wants or a search, never neither.
 function catalogueLoads(): Record<string, unknown>[] {
@@ -79,10 +93,16 @@ describe('every route renders on an empty instance', () => {
           </AuthProvider>
         </QueryClientProvider>
       )
-      await waitFor(() => {
-        expect(client.isFetching()).toBe(0)
-        expect(container.textContent?.length ?? 0).toBeGreaterThan(0)
-      })
+      const settled = () =>
+        waitFor(() => {
+          expect(client.isFetching()).toBe(0)
+          expect(container.textContent?.length ?? 0).toBeGreaterThan(0)
+        })
+      await settled()
+      if (interactions[path]) {
+        await interactions[path]()
+        await settled()
+      }
       window.removeEventListener('error', onError)
 
       expect(errors).toEqual([])

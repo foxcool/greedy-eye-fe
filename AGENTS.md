@@ -144,7 +144,7 @@ Browser → Traefik → psina /verify (forwardAuth)
 
 ## Data Flow (use-portfolio.ts)
 
-1. `USE_BACKEND=true` → listHoldings + listAccounts + listAssets (scoped by
+1. `USE_BACKEND=true` → listHoldings + listAccounts + listAssetsByIds (scoped by
    portfolioId via PortfolioScopeProvider when on a detail page; aggregate
    otherwise) → CoinGecko prices → calculatePortfolio(). When scoped, also
    listRules({portfolioId}) → target_allocation targets feed Target-vs-Current

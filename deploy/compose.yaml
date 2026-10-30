@@ -43,6 +43,26 @@ services:
     networks:
       - proxy
 
+  # Playwright smoke tests in demo mode. Its own image: the dev image is Alpine,
+  # and Playwright's browsers need glibc. Not on the proxy network: the specs
+  # fake every RPC and must not reach a running backend.
+  eye-fe-e2e:
+    profiles: ["test-e2e"]
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.e2e
+    volumes:
+      - ..:/app
+      - /app/node_modules
+      # Keeps the demo-mode build out of the host's .next.
+      - /app/.next
+    working_dir: /app
+    # Chromium needs more shared memory than Docker's default 64MB.
+    ipc: host
+    init: true
+    environment:
+      CI: ${CI:-}
+
 networks:
   proxy:
     external: true

@@ -1,7 +1,7 @@
 COMPOSE=docker compose -p eye-fe
 COMPOSE_FILE=deploy/compose.yaml
 
-.PHONY: up down stop logs clean deps lint typecheck test check
+.PHONY: up down stop logs clean deps lint typecheck test check test-e2e
 
 up:
 	@echo "Starting Docker Compose (default profile)..."
@@ -44,3 +44,9 @@ test:
 # Full pre-commit check: typecheck + lint + test + build
 check:
 	$(COMPOSE) -f $(COMPOSE_FILE) run --rm eye-fe-dev npm run check
+
+# Playwright smoke tests in demo mode (e2e/), no backend needed. Runs in the
+# Playwright image, not the Alpine dev one; --build picks up package.json
+# changes. Failure screenshots and traces land in test-results/.
+test-e2e:
+	$(COMPOSE) -f $(COMPOSE_FILE) --profile test-e2e run --rm --build eye-fe-e2e

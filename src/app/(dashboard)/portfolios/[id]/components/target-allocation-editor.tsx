@@ -3,10 +3,12 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { AssetPicker } from '@/components/asset/asset-picker'
 import { useHoldings } from '@/hooks/use-portfolio'
-import { useAssets } from '@/hooks/use-assets'
+import { useAssetsByIds } from '@/hooks/use-assets'
 import { useTargetAllocationRule, useSaveTargetAllocation, useDeleteRule } from '@/hooks/use-rules'
 import type { TargetsMap } from '@/lib/api/automation-api'
+import type { Asset } from '@/lib/api/backend-types'
 
 // Quote currency the unallocated remainder is held in. Hardcoded until portfolios
 // expose a configurable quote asset.
@@ -45,17 +47,25 @@ function roundPercentages(
 export function TargetAllocationEditor({ portfolioId }: { portfolioId: string }) {
   const { rule, isLoading: ruleLoading } = useTargetAllocationRule(portfolioId)
   const { data: holdings } = useHoldings('value', 'desc')
-  const { data: assets = [] } = useAssets()
   const save = useSaveTargetAllocation(portfolioId)
   const remove = useDeleteRule()
 
-  // assetId → symbol, for labelling rows (holdings first, then asset registry).
+  const saved = useMemo(
+    () => (rule?.configuration?.['targets'] as Record<string, unknown>) ?? {},
+    [rule]
+  )
+  // Labels for saved targets the portfolio no longer holds; held ones are
+  // labelled from holdings, freshly added ones from the search that found them.
+  const { data: savedAssets = [] } = useAssetsByIds(rule ? Object.keys(saved) : undefined)
+  const [picked, setPicked] = useState<Asset[]>([])
+
+  // assetId → symbol, for labelling rows (holdings win over the catalogue).
   const symbolOf = useMemo(() => {
     const map = new Map<string, string>()
-    for (const a of assets) map.set(a.id, a.symbol?.toUpperCase() ?? a.name)
+    for (const a of [...savedAssets, ...picked]) map.set(a.id, a.symbol?.toUpperCase() ?? a.name)
     for (const h of holdings ?? []) map.set(h.assetId, h.symbol.toUpperCase())
     return map
-  }, [assets, holdings])
+  }, [savedAssets, picked, holdings])
 
   // assetId → current share of the portfolio (raw float %), straight from holdings.
   const currentPctByAsset = useMemo(() => {
@@ -72,10 +82,9 @@ export function TargetAllocationEditor({ portfolioId }: { portfolioId: string })
     for (const h of holdings ?? []) {
       if (h.percentage >= SIGNIFICANT_PCT) out[h.assetId] = '0'
     }
-    const saved = (rule?.configuration?.['targets'] as Record<string, unknown>) ?? {}
     for (const [id, v] of Object.entries(saved)) out[id] = String(Number(v) || 0)
     return out
-  }, [holdings, rule])
+  }, [holdings, saved])
 
   const rows = draft ?? initial
   const setRow = (assetId: string, value: string) =>
@@ -87,12 +96,11 @@ export function TargetAllocationEditor({ portfolioId }: { portfolioId: string })
   const hasNegative = Object.values(rows).some((v) => Number(v) < 0)
   const canSave = !overAllocated && !hasNegative && !save.isPending
 
-  // Assets available to add (not already a row).
-  const addable = assets.filter((a) => !(a.id in rows))
+  const rowSet = useMemo(() => new Set(Object.keys(rows)), [rows])
 
-  function addAsset(assetId: string) {
-    if (!assetId) return
-    setDraft({ ...rows, [assetId]: '0' })
+  function addAsset(asset: Asset) {
+    setPicked((p) => [...p, asset])
+    setDraft({ ...rows, [asset.id]: '0' })
   }
 
   // Snapshot current allocation into targets. Significant holdings plus any
@@ -173,20 +181,13 @@ export function TargetAllocationEditor({ portfolioId }: { portfolioId: string })
         )}
       </div>
 
-      {addable.length > 0 && (
-        <select
-          value=""
-          onChange={(e) => addAsset(e.target.value)}
-          className="flex h-9 w-64 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        >
-          <option value="">+ Add asset…</option>
-          {addable.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.symbol?.toUpperCase() ?? a.name}
-            </option>
-          ))}
-        </select>
-      )}
+      <AssetPicker
+        onSelect={addAsset}
+        exclude={rowSet}
+        placeholder="+ Add asset: search by name, symbol or contract…"
+        aria-label="Add asset"
+        className="w-80"
+      />
 
       <div className="flex items-center justify-between border-t border-border pt-3 text-sm">
         <span className={overAllocated ? 'text-destructive' : 'text-muted-foreground'}>

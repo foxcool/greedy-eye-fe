@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { HoldingForm } from './holding-form'
 import type { Account, Asset, Holding } from '@/lib/api/backend-types'
 
@@ -18,7 +19,7 @@ const held: Holding = {
 
 function renderForm(onSubmit = vi.fn()) {
   render(
-    <HoldingForm open onOpenChange={() => {}} onSubmit={onSubmit} initial={held} assets={[asset]} accounts={[account]} />
+    <HoldingForm open onOpenChange={() => {}} onSubmit={onSubmit} initial={held} asset={asset} accounts={[account]} />
   )
   return onSubmit
 }
@@ -53,5 +54,39 @@ describe('HoldingForm', () => {
 
     expect(onSubmit).not.toHaveBeenCalled()
     expect(await screen.findByText(/at most 18 digits/)).toBeInTheDocument()
+  })
+})
+
+// A new holding's asset is found by a server-side search: the form never has
+// the catalogue to offer, only what matches what was typed.
+describe('HoldingForm, new holding', () => {
+  beforeAll(() => {
+    // Radix Select reaches for pointer-capture and scrolling APIs jsdom lacks.
+    Element.prototype.hasPointerCapture = () => false
+    Element.prototype.scrollIntoView = () => {}
+  })
+
+  it('picks a searched asset and submits it', async () => {
+    vi.mocked(fetch).mockImplementation(async () =>
+      new Response(JSON.stringify({ assets: [asset] }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    const onSubmit = vi.fn()
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <HoldingForm open onOpenChange={() => {}} onSubmit={onSubmit} accounts={[account]} />
+      </QueryClientProvider>
+    )
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Search assets' }), { target: { value: 'tkn' } })
+    await userEvent.click(await screen.findByRole('option', { name: 'TKN — Token' }))
+    expect(screen.getByText('TKN — Token')).toBeInTheDocument()
+    expect(screen.getByLabelText('Amount (TKN)')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByText('Select account…').closest('button')!)
+    await userEvent.click(await screen.findByRole('option', { name: 'hot' }))
+    fireEvent.change(screen.getByLabelText(/Amount/), { target: { value: '1.5' } })
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(onSubmit).toHaveBeenCalledWith({ assetId: 'as1', accountId: 'ac1', amountRaw: '150000000', decimals: 8 })
+    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]?.body))).toEqual({ query: 'tkn', pageSize: 50 })
   })
 })

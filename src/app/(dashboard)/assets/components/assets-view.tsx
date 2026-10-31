@@ -8,6 +8,7 @@ import { useCreateAsset } from '@/hooks/use-assets'
 import { useHeldAssets } from '@/hooks/use-held-assets'
 import { assetCardHref } from '@/lib/assets/links'
 import { isFlagged, isHumanVerdict } from '@/lib/assets/catalogue'
+import { useAuth } from '@/lib/auth/auth-context'
 import { DEMO_MODE } from '@/lib/config/data-source'
 import { formatCurrency } from '@/lib/mocks'
 import { AssetForm } from './asset-form'
@@ -53,6 +54,7 @@ export function AssetsView() {
   }
 
   const { data: held, totalValue, isLoading, isValuing, error } = useHeldAssets()
+  const { isAdmin } = useAuth()
   const create = useCreateAsset()
   const [createOpen, setCreateOpen] = useState(false)
 
@@ -102,9 +104,12 @@ export function AssetsView() {
             </p>
           )}
         </div>
-        <Button variant="outline" onClick={() => setCreateOpen(true)}>
-          Add asset
-        </Button>
+        {/* The backend refuses creation from a non-admin; offering it only ends in an error. */}
+        {isAdmin && (
+          <Button variant="outline" onClick={() => setCreateOpen(true)}>
+            Add asset
+          </Button>
+        )}
       </div>
 
       {error ? (
@@ -148,21 +153,23 @@ export function AssetsView() {
         </Tabs>
       )}
 
-      <AssetForm
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        isLoading={create.isPending}
-        onSubmit={(values) =>
-          create.mutate(values, {
-            // A new entry is created to be looked at or bound — open its card.
-            onSuccess: (asset) => {
-              setCreateOpen(false)
-              const href = assetCardHref(asset?.id)
-              if (href) router.push(href)
-            },
-          })
-        }
-      />
+      {isAdmin && (
+        <AssetForm
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          isLoading={create.isPending}
+          onSubmit={(values) =>
+            create.mutate(values, {
+              // A new entry is created to be looked at or bound — open its card.
+              onSuccess: (asset) => {
+                setCreateOpen(false)
+                const href = assetCardHref(asset?.id)
+                if (href) router.push(href)
+              },
+            })
+          }
+        />
+      )}
     </div>
   )
 }

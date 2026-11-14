@@ -39,6 +39,9 @@ export interface Portfolio {
   userId: string
   name: string
   description?: string
+  // Kept out of every figure that crosses portfolios — a paper model next to
+  // real money. Absent on the wire when false.
+  excludedFromTotals?: boolean
   createdAt: string
   updatedAt: string
 }

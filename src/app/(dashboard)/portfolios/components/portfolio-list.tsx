@@ -137,6 +137,14 @@ export function PortfolioList() {
                   <Link href={`/portfolios/${p.id}`} className="hover:underline text-foreground">
                     {p.name}
                   </Link>
+                  {p.excludedFromTotals && (
+                    <span
+                      className="ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-normal bg-secondary text-secondary-foreground"
+                      title="Its value is not added to the All portfolios total"
+                    >
+                      not in totals
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell className="text-muted-foreground">{p.description ?? '—'}</TableCell>
                 <TableCell className="text-muted-foreground text-sm">

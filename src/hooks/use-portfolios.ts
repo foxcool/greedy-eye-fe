@@ -3,6 +3,7 @@ import {
   createPortfolio,
   deletePortfolio,
   listPortfolios,
+  setPortfolioExcludedFromTotals,
   updatePortfolio,
 } from '@/lib/api/portfolio-api'
 
@@ -35,6 +36,23 @@ export function useUpdatePortfolio() {
       description?: string
     }) => updatePortfolio(id, { name, description }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['portfolios'] }),
+  })
+}
+
+// Moving a portfolio in or out of the totals changes every cross-portfolio
+// figure, not only its own row: the summed value, the balance map, the held
+// list.
+export function useSetPortfolioExcludedFromTotals() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, excluded }: { id: string; excluded: boolean }) =>
+      setPortfolioExcludedFromTotals(id, excluded),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['portfolios'] })
+      qc.invalidateQueries({ queryKey: ['portfolio'] })
+      qc.invalidateQueries({ queryKey: ['heatmap'] })
+      qc.invalidateQueries({ queryKey: ['holdings'] })
+    },
   })
 }
 

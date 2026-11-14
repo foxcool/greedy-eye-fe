@@ -5,13 +5,18 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { PortfolioForm } from '../../components/portfolio-form'
 import { TargetAllocationEditor } from './target-allocation-editor'
-import { useUpdatePortfolio, useDeletePortfolio } from '@/hooks/use-portfolios'
+import {
+  useUpdatePortfolio,
+  useDeletePortfolio,
+  useSetPortfolioExcludedFromTotals,
+} from '@/hooks/use-portfolios'
 import type { Portfolio } from '@/lib/api/backend-types'
 
 export function PortfolioSettings({ portfolio }: { portfolio: Portfolio }) {
   const router = useRouter()
   const update = useUpdatePortfolio()
   const remove = useDeletePortfolio()
+  const setExcluded = useSetPortfolioExcludedFromTotals()
   const [editOpen, setEditOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -35,6 +40,29 @@ export function PortfolioSettings({ portfolio }: { portfolio: Portfolio }) {
         <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
           Edit details
         </Button>
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <h3 className="text-sm font-medium text-foreground">Totals</h3>
+          <p className="text-sm text-muted-foreground">
+            A portfolio that models something rather than holds it — paper
+            trading, a what-if — can be kept out of the figures that add
+            portfolios together. On its own page it is still valued in full.
+          </p>
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={portfolio.excludedFromTotals ?? false}
+            disabled={setExcluded.isPending}
+            onChange={(e) => setExcluded.mutate({ id: portfolio.id, excluded: e.target.checked })}
+          />
+          Keep out of All portfolios totals
+        </label>
+        {setExcluded.isError && (
+          <p className="text-sm text-destructive">Could not save: {setExcluded.error.message}</p>
+        )}
       </section>
 
       <section className="space-y-3">

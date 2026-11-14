@@ -44,6 +44,15 @@ export async function updatePortfolio(
   })
 }
 
+// The flag travels alone, under its own mask, like an account's disabled flag:
+// false is a real value here and has to be named to be written.
+export async function setPortfolioExcludedFromTotals(id: string, excluded: boolean): Promise<Portfolio> {
+  return apiClient.post<Portfolio>(RPC('UpdatePortfolio'), {
+    portfolio: { id, excludedFromTotals: excluded },
+    updateMask: 'excludedFromTotals',
+  })
+}
+
 export async function deletePortfolio(id: string): Promise<void> {
   await apiClient.post(RPC('DeletePortfolio'), { id })
 }
@@ -68,6 +77,9 @@ export interface ListHoldingsOptions {
   portfolioId?: string
   accountId?: string
   assetId?: string
+  // For readers that add holdings up across portfolios: leaves out the ones in
+  // a portfolio flagged excludedFromTotals. The list is raw by default.
+  omitExcludedFromTotals?: boolean
 }
 
 // Backend pages default to 20 rows — follow nextPageToken to fetch everything.
@@ -79,6 +91,7 @@ export async function listHoldings(opts: ListHoldingsOptions = {}): Promise<Hold
     if (opts.portfolioId) body['portfolioId'] = opts.portfolioId
     if (opts.accountId) body['accountId'] = opts.accountId
     if (opts.assetId) body['assetId'] = opts.assetId
+    if (opts.omitExcludedFromTotals) body['omitExcludedFromTotals'] = true
     if (pageToken) body['pageToken'] = pageToken
 
     const res = await apiClient.post<{ holdings?: Holding[]; nextPageToken?: string }>(

@@ -65,15 +65,19 @@ export function usePortfolio() {
           return { ...calculatePortfolio([], {}), isLivePrices: false, dataSource: 'backend' as const }
         }
 
-        // When scoped, value just the one portfolio; otherwise sum across all.
+        // When scoped, value just the one portfolio — flagged or not, on its own
+        // it is worth what it holds. Otherwise sum across the ones that count:
+        // a portfolio flagged out of totals is a model, not money.
         const valuedPortfolios = portfolioId
           ? portfolios.filter(p => p.id === portfolioId)
-          : portfolios
+          : portfolios.filter(p => !p.excludedFromTotals)
 
-        // Fetch all data in parallel. listHoldings is scoped by portfolioId when set.
+        // Fetch all data in parallel. listHoldings is scoped by portfolioId when set;
+        // unscoped it has to be told to leave the flagged portfolios out, the
+        // backend list is raw by default.
         // Target allocations are per-portfolio, so only fetch the rule when scoped.
         const [holdings, accounts, beValues, priceResult, rules] = await Promise.all([
-          listHoldings(portfolioId ? { portfolioId } : {}),
+          listHoldings(portfolioId ? { portfolioId } : { omitExcludedFromTotals: true }),
           listAccounts(),
           Promise.all(valuedPortfolios.map(p => calculatePortfolioValue(p.id, 'usd').catch(() => null))),
           fetchPortfolioPriceMap(valuedPortfolios.map(p => p.id)),

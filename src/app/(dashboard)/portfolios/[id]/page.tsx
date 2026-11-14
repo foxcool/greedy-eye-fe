@@ -71,7 +71,17 @@ export default function PortfolioDetailPage({ params }: PageProps) {
               <Link href="/portfolios">←</Link>
             </Button>
             <div className="min-w-0">
-              <h1 className="text-2xl font-semibold break-words">{portfolio.name}</h1>
+              <h1 className="text-2xl font-semibold break-words">
+                {portfolio.name}
+                {portfolio.excludedFromTotals && (
+                  <span
+                    className="ml-2 inline-flex items-center rounded-full px-2 py-0.5 align-middle text-xs font-normal bg-secondary text-secondary-foreground"
+                    title="Its value is not added to the All portfolios total"
+                  >
+                    not in totals
+                  </span>
+                )}
+              </h1>
               {portfolio.description && (
                 <p className="text-sm text-muted-foreground">{portfolio.description}</p>
               )}

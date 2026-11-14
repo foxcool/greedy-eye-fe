@@ -56,7 +56,9 @@ export function useHeldAssets() {
     // Under ['holdings'] so every holding mutation that invalidates that prefix
     // refreshes this list too.
     queryKey: ['holdings', 'all'],
-    queryFn: () => listHoldings(),
+    // Quantities are added up across portfolios, and the values beside them
+    // come from the unscoped summary: both leave flagged portfolios out.
+    queryFn: () => listHoldings({ omitExcludedFromTotals: true }),
     enabled: USE_BACKEND,
   })
   // The assets the reader holds and nothing else; the catalogue is searched,

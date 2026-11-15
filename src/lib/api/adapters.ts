@@ -1,20 +1,7 @@
-import type { Holding, Account, Asset, AccountType } from './backend-types'
+import type { Holding, Account, Asset } from './backend-types'
 import { holdingToDecimal } from './backend-types'
 import type { RawHolding } from '@/lib/mocks/portfolio-data'
 import type { HoldingSource } from '@/lib/types/portfolio-view'
-
-function mapAccountType(type: AccountType): HoldingSource['type'] {
-  switch (type) {
-    case 'ACCOUNT_TYPE_WALLET':
-      return 'wallet'
-    case 'ACCOUNT_TYPE_EXCHANGE':
-    case 'ACCOUNT_TYPE_BROKER':
-    case 'ACCOUNT_TYPE_BANK':
-      return 'exchange'
-    default:
-      return 'wallet'
-  }
-}
 
 /**
  * Converts backend Holdings + Accounts + Assets into RawHolding[]
@@ -50,7 +37,6 @@ export function buildRawHoldings(
       const account = accountMap.get(h.accountId)
       return {
         name: account?.name ?? h.accountId,
-        type: mapAccountType(account?.type ?? 'ACCOUNT_TYPE_UNSPECIFIED'),
         amount: holdingToDecimal(h.amount, h.decimals),
       }
     })

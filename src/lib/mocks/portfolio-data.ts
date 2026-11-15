@@ -21,7 +21,19 @@ export interface RawHolding {
   sources: HoldingSource[]
 }
 
-export const rawHoldings: RawHolding[] = [
+// Demo sources keep a custody kind, chain and protocol only so "import local
+// data" can seed accounts of the right type; no view renders them.
+export interface MockHoldingSource extends HoldingSource {
+  type: 'wallet' | 'exchange' | 'defi'
+  chain?: string
+  protocol?: string
+}
+
+export interface MockRawHolding extends RawHolding {
+  sources: MockHoldingSource[]
+}
+
+export const rawHoldings: MockRawHolding[] = [
   {
     assetId: 'wrapped-bitcoin',
     symbol: 'WBTC',

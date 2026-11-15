@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -15,7 +16,7 @@ import { useHoldingsQuery, useCreateHolding, useUpdateHolding, useDeleteHolding 
 import { useAccounts } from '@/hooks/use-accounts'
 import { useAssetsByIds } from '@/hooks/use-assets'
 import { holdingToDecimal } from '@/lib/api/backend-types'
-import { truncateAddress } from '@/lib/assets/links'
+import { accountSettingsHref } from '@/lib/accounts/links'
 import { AssetLink } from '@/components/asset/asset-link'
 import type { Account, Holding } from '@/lib/api/backend-types'
 
@@ -29,14 +30,6 @@ interface HoldingsManagerProps {
 // live 0.
 function isClosed(h: Holding): boolean {
   return holdingToDecimal(h.amount, h.decimals) === 0
-}
-
-const ACCOUNT_TYPE_LABEL: Record<string, string> = {
-  ACCOUNT_TYPE_WALLET: 'Wallet',
-  ACCOUNT_TYPE_EXCHANGE: 'Exchange',
-  ACCOUNT_TYPE_BROKER: 'Broker',
-  ACCOUNT_TYPE_BANK: 'Bank',
-  ACCOUNT_TYPE_MANUAL: 'Manual',
 }
 
 function AccountGroup({
@@ -61,23 +54,19 @@ function AccountGroup({
   const closed = holdings.filter(isClosed)
   const included = open.filter((h) => !h.excluded)
   const excluded = open.filter((h) => h.excluded)
-  const typeLabel = ACCOUNT_TYPE_LABEL[account.type] ?? account.type
 
   return (
     <div className="rounded-lg border border-border overflow-hidden">
-      {/* Account header */}
+      {/* Name only: custody type and address are in Settings -> Accounts,
+          one click away through the link. */}
       <div className="flex items-center justify-between px-4 py-2.5 bg-muted/40 border-b border-border">
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-sm">{account.name}</span>
-          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-            {typeLabel}
-          </span>
-          {account.data?.address && (
-            <span className="text-xs text-muted-foreground font-mono truncate max-w-[14ch]" title={account.data.address}>
-              {truncateAddress(account.data.address)}
-            </span>
-          )}
-        </div>
+        <Link
+          href={accountSettingsHref(account.id)}
+          className="font-medium text-sm hover:underline"
+          title="Open this account in Settings"
+        >
+          {account.name}
+        </Link>
         <span className="text-xs text-muted-foreground">
           {included.length} asset{included.length !== 1 ? 's' : ''}
           {excluded.length > 0 && `, ${excluded.length} excluded`}

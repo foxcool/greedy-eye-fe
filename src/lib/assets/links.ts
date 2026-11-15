@@ -60,13 +60,22 @@ export function contractRef(asset: Asset): ContractRef | undefined {
  * ticker that happens to contain dots is never mistaken for one.
  */
 export function derivedLabelContract(asset: Asset): ContractRef | undefined {
-  const contract = contractRef(asset)
   const parts = asset.symbol?.split(/\.\.|…/)
-  if (!contract || !parts || parts.length !== 2) return undefined
+  if (!parts || parts.length !== 2) return undefined
   const [head, tail] = parts.map((p) => p.toLowerCase())
-  const address = contract.address.toLowerCase()
-  if (!head || !tail || !address.startsWith(head) || !address.endsWith(tail)) return undefined
-  return contract
+  if (!head || !tail) return undefined
+  const matches = (address: string) => {
+    const a = address.toLowerCase()
+    return a.startsWith(head) && a.endsWith(tail)
+  }
+  // Every binding, not just the first: an asset can carry several contracts,
+  // and the label was cut from one of them.
+  const onchain = asset.externalRefs?.find(
+    (r) => r.source.startsWith(ONCHAIN_SOURCE) && matches(r.ref)
+  )
+  if (onchain) return { address: onchain.ref, chain: onchain.source.slice(ONCHAIN_SOURCE.length) }
+  const tagged = asset.tags?.find((t) => t.startsWith(CONTRACT_TAG) && matches(t.slice(CONTRACT_TAG.length)))
+  return tagged ? { address: tagged.slice(CONTRACT_TAG.length) } : undefined
 }
 
 /** The CoinGecko id among the asset's external refs, if one was ever bound. */

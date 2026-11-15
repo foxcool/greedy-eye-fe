@@ -51,4 +51,12 @@ describe('derivedLabelContract', () => {
   it('has nothing to show without a contract', () => {
     expect(derivedLabelContract(token('0xAbCd..Ef12', []))).toBeUndefined()
   })
+
+  it('finds the binding the label was cut from, not just the first one', () => {
+    const bound = {
+      ...token('0xAbCd..Ef12', []),
+      externalRefs: [ref('1', 'onchain:eth', '0x9999000000000000000000000000000000001111'), ref('2', 'onchain:base', address)],
+    } as Asset
+    expect(derivedLabelContract(bound)).toEqual({ address, chain: 'base' })
+  })
 })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -61,11 +61,17 @@ export function AccountList() {
 
   // A link from a portfolio lands on /settings#account-<id>, but the rows
   // arrive after the page, so the browser's own jump to the anchor misses.
-  const hasAccounts = accounts.length > 0
+  // Retried on every account update until the row exists (it may come with a
+  // refetch, not the first load), then never again so later refetches do not
+  // yank the page back.
+  const scrolledToHash = useRef(false)
   useEffect(() => {
-    if (!hasAccounts || !window.location.hash) return
-    document.getElementById(window.location.hash.slice(1))?.scrollIntoView()
-  }, [hasAccounts])
+    if (scrolledToHash.current || !window.location.hash) return
+    const row = document.getElementById(window.location.hash.slice(1))
+    if (!row) return
+    row.scrollIntoView()
+    scrolledToHash.current = true
+  }, [accounts])
 
   // Deleting is two-stage on purpose. The first attempt leaves positions
   // alone; only if the backend refuses because they exist do we name how many

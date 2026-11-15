@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Asset, AssetExternalRef } from '@/lib/api/backend-types'
-import { refsOnChain } from './links'
+import { derivedLabelContract, refsOnChain } from './links'
 
 function ref(id: string, source: string, address: string): AssetExternalRef {
   return { id, assetId: 'a', source, ref: address, origin: 'auto', createdAt: '' }
@@ -28,5 +28,27 @@ describe('refsOnChain', () => {
   it('has nothing for a position that is not chain-scoped', () => {
     expect(refsOnChain(asset, '')).toEqual([])
     expect(refsOnChain(asset, undefined)).toEqual([])
+  })
+})
+
+describe('derivedLabelContract', () => {
+  const address = '0xAbCd00000000000000000000000000000000Ef12'
+  const token = (symbol: string, tags: string[]) => ({ id: 't', symbol, tags }) as unknown as Asset
+
+  it('finds the contract behind a label made from its ends', () => {
+    expect(derivedLabelContract(token('0xAbCd..Ef12', [`contract:${address}`]))).toEqual({ address })
+    expect(derivedLabelContract(token('0xabcd…ef12', [`contract:${address}`]))).toEqual({ address })
+  })
+
+  it('leaves a real ticker alone, even one carrying a contract', () => {
+    expect(derivedLabelContract(token('USDC', [`contract:${address}`]))).toBeUndefined()
+  })
+
+  it('does not take a label pointing at some other contract for this one', () => {
+    expect(derivedLabelContract(token('0x1234..5678', [`contract:${address}`]))).toBeUndefined()
+  })
+
+  it('has nothing to show without a contract', () => {
+    expect(derivedLabelContract(token('0xAbCd..Ef12', []))).toBeUndefined()
   })
 })

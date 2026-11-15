@@ -50,6 +50,25 @@ export function contractRef(asset: Asset): ContractRef | undefined {
   return undefined
 }
 
+/**
+ * The contract behind a symbol the backend made up from its address.
+ *
+ * A token whose provider reported no symbol is labelled with the ends of its
+ * contract ("0xAbCd..1234"). That label is a pointer, not a name: two tokens can
+ * share it, so wherever it is shown the full contract has to be shown too.
+ * Matched against the asset's own contract rather than by shape alone, so a real
+ * ticker that happens to contain dots is never mistaken for one.
+ */
+export function derivedLabelContract(asset: Asset): ContractRef | undefined {
+  const contract = contractRef(asset)
+  const parts = asset.symbol?.split(/\.\.|…/)
+  if (!contract || !parts || parts.length !== 2) return undefined
+  const [head, tail] = parts.map((p) => p.toLowerCase())
+  const address = contract.address.toLowerCase()
+  if (!head || !tail || !address.startsWith(head) || !address.endsWith(tail)) return undefined
+  return contract
+}
+
 /** The CoinGecko id among the asset's external refs, if one was ever bound. */
 export function coingeckoRef(asset: Asset): AssetExternalRef | undefined {
   return asset.externalRefs?.find((r) => r.source === 'coingecko')

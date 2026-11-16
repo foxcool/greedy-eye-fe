@@ -42,9 +42,7 @@ export function PortfolioList() {
       {portfolios.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-12 text-center">
           <p className="text-muted-foreground mb-4">No portfolios yet.</p>
-          <div className="flex justify-center gap-3">
-            <Button onClick={() => setCreateOpen(true)}>Create portfolio</Button>
-          </div>
+          <Button onClick={() => setCreateOpen(true)}>Create portfolio</Button>
         </div>
       ) : (
         <Table>

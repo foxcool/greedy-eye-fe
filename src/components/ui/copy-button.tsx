@@ -19,19 +19,25 @@ export function CopyButton({
   variant?: React.ComponentProps<typeof Button>['variant']
   size?: React.ComponentProps<typeof Button>['size']
 }) {
-  const [copied, setCopied] = useState(false)
+  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle')
   return (
     <Button
       type="button"
       variant={variant}
       size={size}
       onClick={async () => {
-        await navigator.clipboard.writeText(value)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1500)
+        // The clipboard is refused on an insecure origin or without permission;
+        // saying so beats a click that seems to do nothing.
+        try {
+          await navigator.clipboard.writeText(value)
+          setState('copied')
+        } catch {
+          setState('failed')
+        }
+        setTimeout(() => setState('idle'), 1500)
       }}
     >
-      {copied ? 'Copied' : label}
+      {state === 'copied' ? 'Copied' : state === 'failed' ? 'Copy failed' : label}
     </Button>
   )
 }

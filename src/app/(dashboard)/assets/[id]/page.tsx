@@ -4,11 +4,12 @@ import { use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { ContractAddress } from '@/components/asset/contract-address'
 import { PriceHistoryChart } from '@/components/prices/price-history-chart'
 import { useAsset, useLatestPrice } from '@/hooks/use-assets'
 import { holdingToDecimal, type Asset } from '@/lib/api/backend-types'
 import { DEMO_MODE } from '@/lib/config/data-source'
-import { truncateAddress } from '@/lib/assets/links'
+import { derivedLabelContract, truncateAddress } from '@/lib/assets/links'
 import { assetTypeLabel } from '@/lib/assets/catalogue'
 import { formatCurrency } from '@/lib/mocks'
 import { VerdictBadge } from '../components/verdict-badge'
@@ -127,6 +128,7 @@ export default function AssetDetailPage({ params }: PageProps) {
   const marketLabel = market.includes('/')
     ? `${market.slice(0, market.indexOf('/') + 1)}${truncateAddress(market.slice(market.indexOf('/') + 1))}`
     : market
+  const derived = derivedLabelContract(asset)
 
   return (
     <div className="space-y-8">
@@ -147,6 +149,7 @@ export default function AssetDetailPage({ params }: PageProps) {
             {market.includes('/') && (
               <p className="text-xs text-muted-foreground">no venue lists this contract</p>
             )}
+            {derived && <ContractAddress contract={derived} className="mt-1" />}
           </div>
         </div>
         <div className="flex items-start gap-2">

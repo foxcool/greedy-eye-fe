@@ -2,8 +2,9 @@
 
 import { ExternalLink } from 'lucide-react'
 import { AssetLink } from '@/components/asset/asset-link'
+import { ContractAddress } from '@/components/asset/contract-address'
 import { coingeckoIdBySymbol } from '@/hooks/use-prices'
-import { coingeckoUrl, contractRef, contractUrl } from '@/lib/assets/links'
+import { coingeckoUrl, contractRef, contractUrl, derivedLabelContract } from '@/lib/assets/links'
 import type { Asset } from '@/lib/api/backend-types'
 import { cn } from '@/lib/utils'
 import { VerdictBadge } from './verdict-badge'
@@ -27,6 +28,7 @@ export function AssetCell({
   // Bounded width: an airdrop's "symbol" is often a whole sentence of ad copy,
   // and in an auto-layout table `truncate` alone lets it push every number off
   // screen.
+  const derived = asset && derivedLabelContract(asset)
   return (
     <div className="min-w-0 max-w-[18rem]">
       <div className="flex items-center gap-2">
@@ -40,6 +42,7 @@ export function AssetCell({
           {name}
         </p>
       )}
+      {derived && <ContractAddress contract={derived} />}
     </div>
   )
 }

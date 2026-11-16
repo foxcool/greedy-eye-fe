@@ -22,13 +22,19 @@ export interface HeatmapOptions {
   window?: HeatmapWindow
 }
 
-// Deterministic pseudo change % in (-6, +6) so demo tiles are stable across reloads.
-function demoChange(symbol: string, window: string): number {
+// Demo change % for a tile. 24h is the holding's own change24h, the number the
+// portfolio total is computed from, so the tiles and the total cannot disagree.
+// The longer windows have no mock source and get a deterministic pseudo value
+// in [-6, +6), stable across reloads.
+export function demoChange(symbol: string, window: HeatmapWindow, change24h: number): number {
+  if (window === 'HEATMAP_WINDOW_24H') return change24h
   let hash = 0
   for (const ch of symbol + window) {
     hash = (hash * 31 + ch.charCodeAt(0)) | 0
   }
-  return ((hash % 1200) / 100) - 6
+  // JS % keeps the sign of the dividend: a negative hash used to stretch the
+  // range down to -18.
+  return (((hash % 1200) + 1200) % 1200) / 100 - 6
 }
 
 export interface HeatmapResult {
@@ -49,7 +55,7 @@ function useDemoHeatmap(window: HeatmapWindow): HeatmapResult {
         id: h.assetId,
         label: h.symbol,
         size: h.value,
-        colorValue: demoChange(h.symbol, window),
+        colorValue: demoChange(h.symbol, window, h.change24h ?? 0),
         assetId: h.assetId,
       })),
   }

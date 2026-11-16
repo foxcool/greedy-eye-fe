@@ -60,6 +60,8 @@ make typecheck        # tsc --noEmit
 make test             # vitest: unit, component and route smoke tests
 make test-e2e         # Playwright UI smoke (e2e/) in demo mode, no backend;
                       # own image (Playwright's), RPCs faked in e2e/fixtures.ts
+make screenshots      # Landing-page screenshots from demo mode -> screenshots/
+                      # (e2e/screenshots.spec.ts; not part of test-e2e)
 make check            # typecheck + lint + test + build — run before committing
 ```
 

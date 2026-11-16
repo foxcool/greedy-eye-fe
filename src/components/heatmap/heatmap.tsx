@@ -51,6 +51,8 @@ interface TileProps {
   label?: string
   colorValue?: number
   assetId?: string
+  // Set by the treemap: 0 for the root, 1 for the tiles of a flat map.
+  depth?: number
   onLeafClick?: LeafClickHandler
 }
 
@@ -63,8 +65,12 @@ export type LeafClickHandler = (
   e: React.MouseEvent | React.KeyboardEvent
 ) => void
 
-function HeatTile(props: TileProps) {
-  const { x = 0, y = 0, width = 0, height = 0, label, colorValue = 0, assetId, onLeafClick } = props
+export function HeatTile(props: TileProps) {
+  const { x = 0, y = 0, width = 0, height = 0, label, colorValue = 0, assetId, depth, onLeafClick } = props
+  // The treemap renders its root through the same content as the tiles. The
+  // root has no label and no change, so drawing it put a stray "+0.0%" in the
+  // middle of the map.
+  if (depth === 0) return null
   if (width <= 0 || height <= 0) return null
 
   const showLabel = width > 52 && height > 26

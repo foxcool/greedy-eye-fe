@@ -29,7 +29,22 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', testIgnore: /screenshots\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+    // Landing-page screenshots: only when asked for (make screenshots), so a
+    // plain run of the smoke suite never spends time on them.
+    ...(process.env.SCREENSHOTS
+      ? [{
+          name: 'screenshots',
+          testMatch: /screenshots\.spec\.ts/,
+          use: {
+            ...devices['Desktop Chrome'],
+            viewport: { width: 1440, height: 900 },
+            deviceScaleFactor: 2,
+          },
+        }]
+      : []),
+  ],
   webServer: {
     // A production build, served the way build/Dockerfile serves it: next dev
     // compiles each route on first hit, which makes the first test of every

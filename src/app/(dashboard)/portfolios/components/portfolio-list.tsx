@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -20,76 +19,15 @@ import {
   useDeletePortfolio,
 } from '@/hooks/use-portfolios'
 import type { Portfolio } from '@/lib/api/backend-types'
-import { createPortfolio, createAccount, createHolding } from '@/lib/api/portfolio-api'
-import { createAsset } from '@/lib/api/assets-api'
-import { rawHoldings } from '@/lib/mocks/portfolio-data'
-import { decimalToHolding } from '@/lib/api/backend-types'
-
-async function importLocalData(onDone: () => void, setImporting: (v: boolean) => void) {
-  setImporting(true)
-  try {
-    const portfolio = await createPortfolio('My Portfolio', 'Imported from local data')
-
-    // Collect unique account names
-    const accountNameToId = new Map<string, string>()
-    for (const rh of rawHoldings) {
-      for (const source of rh.sources) {
-        if (!accountNameToId.has(source.name)) {
-          const type =
-            source.type === 'exchange'
-              ? 'ACCOUNT_TYPE_EXCHANGE'
-              : source.type === 'defi'
-              ? 'ACCOUNT_TYPE_WALLET'
-              : 'ACCOUNT_TYPE_WALLET'
-          const acc = await createAccount({ name: source.name, type })
-          accountNameToId.set(source.name, acc.id)
-        }
-      }
-    }
-
-    // Create assets and holdings
-    for (const rh of rawHoldings) {
-      try {
-        await createAsset({
-          id: rh.assetId,
-          name: rh.name,
-          symbol: rh.symbol,
-          type: 'ASSET_TYPE_CRYPTOCURRENCY',
-        })
-      } catch {
-        // Asset may already exist — ignore
-      }
-
-      for (const source of rh.sources) {
-        if (source.amount <= 0) continue
-        const accountId = accountNameToId.get(source.name)
-        if (!accountId) continue
-        await createHolding({
-          amount: decimalToHolding(source.amount, 8),
-          decimals: 8,
-          assetId: rh.assetId,
-          accountId,
-          portfolioId: portfolio.id,
-        })
-      }
-    }
-
-    onDone()
-  } finally {
-    setImporting(false)
-  }
-}
 
 export function PortfolioList() {
   const { data: portfolios = [], isLoading, error } = usePortfolios()
   const create = useCreatePortfolio()
   const update = useUpdatePortfolio()
   const remove = useDeletePortfolio()
-  const qc = useQueryClient()
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Portfolio | null>(null)
-  const [importing, setImporting] = useState(false)
 
   if (isLoading) return <p className="text-muted-foreground">Loading portfolios…</p>
   if (error) return <p className="text-destructive">Failed to load portfolios.</p>
@@ -106,18 +44,6 @@ export function PortfolioList() {
           <p className="text-muted-foreground mb-4">No portfolios yet.</p>
           <div className="flex justify-center gap-3">
             <Button onClick={() => setCreateOpen(true)}>Create portfolio</Button>
-            <Button
-              variant="outline"
-              disabled={importing}
-              onClick={() =>
-                importLocalData(
-                  () => qc.invalidateQueries({ queryKey: ['portfolios'] }),
-                  setImporting
-                )
-              }
-            >
-              {importing ? 'Importing…' : 'Import from local data'}
-            </Button>
           </div>
         </div>
       ) : (

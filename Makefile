@@ -1,7 +1,7 @@
 COMPOSE=docker compose -p eye-fe
 COMPOSE_FILE=deploy/compose.yaml
 
-.PHONY: up down stop logs clean deps lint typecheck test check test-e2e
+.PHONY: up down stop logs clean deps lint typecheck test check test-e2e screenshots
 
 up:
 	@echo "Starting Docker Compose (default profile)..."
@@ -50,3 +50,8 @@ check:
 # changes. Failure screenshots and traces land in test-results/.
 test-e2e:
 	$(COMPOSE) -f $(COMPOSE_FILE) --profile test-e2e run --rm --build eye-fe-e2e
+
+# Landing-page screenshots from demo mode (e2e/screenshots.spec.ts), same image
+# as test-e2e. PNGs land in screenshots/, which git ignores.
+screenshots:
+	$(COMPOSE) -f $(COMPOSE_FILE) --profile test-e2e run --rm --build -e SCREENSHOTS=1 eye-fe-e2e npx playwright test --project=screenshots

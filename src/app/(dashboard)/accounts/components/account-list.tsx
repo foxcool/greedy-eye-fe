@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -21,6 +21,7 @@ import { syncAccount } from '@/lib/api/portfolio-api'
 import type { Account } from '@/lib/api/backend-types'
 import { summarizeSync, describeSync } from '@/lib/accounts/sync-result'
 import { scopeSteps } from '@/lib/accounts/scope-steps'
+import { accountRowId } from '@/lib/accounts/links'
 
 const TYPE_LABELS: Record<string, string> = {
   ACCOUNT_TYPE_WALLET: 'Wallet',
@@ -57,6 +58,20 @@ export function AccountList() {
   const updateScopes = useUpdateSystemScopes()
   const remove = useDeleteAccount()
   const standDown = useSetAccountDisabled()
+
+  // A link from a portfolio lands on /settings#account-<id>, but the rows
+  // arrive after the page, so the browser's own jump to the anchor misses.
+  // Retried on every account update until the row exists (it may come with a
+  // refetch, not the first load), then never again so later refetches do not
+  // yank the page back.
+  const scrolledToHash = useRef(false)
+  useEffect(() => {
+    if (scrolledToHash.current || !window.location.hash) return
+    const row = document.getElementById(window.location.hash.slice(1))
+    if (!row) return
+    row.scrollIntoView()
+    scrolledToHash.current = true
+  }, [accounts])
 
   // Deleting is two-stage on purpose. The first attempt leaves positions
   // alone; only if the backend refuses because they exist do we name how many
@@ -167,8 +182,9 @@ export function AccountList() {
             {accounts.map((a) => (
               <TableRow
                 key={a.id}
+                id={accountRowId(a.id)}
                 data-disabled={a.disabled ? 'true' : undefined}
-                className={a.disabled ? 'opacity-60' : undefined}
+                className={a.disabled ? 'scroll-mt-20 opacity-60' : 'scroll-mt-20'}
               >
                 <TableCell className="font-medium">{a.name}</TableCell>
                 <TableCell>

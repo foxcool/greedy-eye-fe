@@ -27,8 +27,8 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'BTC',
     name: 'Bitcoin',
     sources: [
-      { name: 'btc cold', type: 'wallet', amount: 0.085, chain: 'bitcoin' },
-      { name: 'binance', type: 'exchange', amount: 0.012 },
+      { name: 'btc cold', amount: 0.085 },
+      { name: 'binance', amount: 0.012 },
     ],
   },
   {
@@ -36,10 +36,10 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'ETH',
     name: 'Ethereum',
     sources: [
-      { name: 'eth main', type: 'wallet', amount: 1.2, chain: 'ethereum' },
-      { name: 'eth main aave', type: 'defi', amount: 0.8, chain: 'ethereum', protocol: 'aave' },
-      { name: 'arb main', type: 'wallet', amount: 0.35, chain: 'arbitrum' },
-      { name: 'base main', type: 'wallet', amount: 0.4, chain: 'base' },
+      { name: 'eth main', amount: 1.2 },
+      { name: 'eth main aave', amount: 0.8 },
+      { name: 'arb main', amount: 0.35 },
+      { name: 'base main', amount: 0.4 },
     ],
   },
   {
@@ -47,9 +47,9 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'USDC',
     name: 'USD Coin',
     sources: [
-      { name: 'eth main aave', type: 'defi', amount: 2500, chain: 'ethereum', protocol: 'aave' },
-      { name: 'base main', type: 'wallet', amount: 600, chain: 'base' },
-      { name: 'binance', type: 'exchange', amount: 400 },
+      { name: 'eth main aave', amount: 2500 },
+      { name: 'base main', amount: 600 },
+      { name: 'binance', amount: 400 },
     ],
   },
   {
@@ -57,7 +57,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'USDT',
     name: 'Tether',
     sources: [
-      { name: 'binance', type: 'exchange', amount: 1200 },
+      { name: 'binance', amount: 1200 },
     ],
   },
   {
@@ -65,7 +65,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'DAI',
     name: 'Dai',
     sources: [
-      { name: 'op main', type: 'wallet', amount: 500, chain: 'optimism' },
+      { name: 'op main', amount: 500 },
     ],
   },
   {
@@ -73,8 +73,8 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'SOL',
     name: 'Solana',
     sources: [
-      { name: 'sol main', type: 'wallet', amount: 14, chain: 'solana' },
-      { name: 'binance', type: 'exchange', amount: 3 },
+      { name: 'sol main', amount: 14 },
+      { name: 'binance', amount: 3 },
     ],
   },
   {
@@ -82,7 +82,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'TON',
     name: 'Toncoin',
     sources: [
-      { name: 'ton main', type: 'wallet', amount: 320, chain: 'ton' },
+      { name: 'ton main', amount: 320 },
     ],
   },
   {
@@ -90,7 +90,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'DOT',
     name: 'Polkadot',
     sources: [
-      { name: 'dot staked', type: 'defi', amount: 260, chain: 'polkadot', protocol: 'staking' },
+      { name: 'dot staked', amount: 260 },
     ],
   },
   {
@@ -98,7 +98,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'ATOM',
     name: 'Cosmos Hub',
     sources: [
-      { name: 'atom staked', type: 'defi', amount: 140, chain: 'cosmos', protocol: 'staking' },
+      { name: 'atom staked', amount: 140 },
     ],
   },
   {
@@ -106,7 +106,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'XTZ',
     name: 'Tezos',
     sources: [
-      { name: 'xtz staked', type: 'defi', amount: 600, chain: 'tezos', protocol: 'staking' },
+      { name: 'xtz staked', amount: 600 },
     ],
   },
   {
@@ -114,7 +114,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'LINK',
     name: 'Chainlink',
     sources: [
-      { name: 'eth main', type: 'wallet', amount: 45, chain: 'ethereum' },
+      { name: 'eth main', amount: 45 },
     ],
   },
   {
@@ -122,7 +122,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'UNI',
     name: 'Uniswap',
     sources: [
-      { name: 'eth main', type: 'wallet', amount: 40, chain: 'ethereum' },
+      { name: 'eth main', amount: 40 },
     ],
   },
   {
@@ -130,7 +130,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'AAVE',
     name: 'Aave',
     sources: [
-      { name: 'eth main', type: 'wallet', amount: 3, chain: 'ethereum' },
+      { name: 'eth main', amount: 3 },
     ],
   },
   {
@@ -138,7 +138,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'ARB',
     name: 'Arbitrum',
     sources: [
-      { name: 'arb main', type: 'wallet', amount: 900, chain: 'arbitrum' },
+      { name: 'arb main', amount: 900 },
     ],
   },
   {
@@ -146,7 +146,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'OP',
     name: 'Optimism',
     sources: [
-      { name: 'op main', type: 'wallet', amount: 300, chain: 'optimism' },
+      { name: 'op main', amount: 300 },
     ],
   },
   {
@@ -154,7 +154,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'XMR',
     name: 'Monero',
     sources: [
-      { name: 'xmr main', type: 'wallet', amount: 4, chain: 'monero' },
+      { name: 'xmr main', amount: 4 },
     ],
   },
   {
@@ -162,7 +162,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'KSM',
     name: 'Kusama',
     sources: [
-      { name: 'ksm main', type: 'wallet', amount: 12, chain: 'kusama' },
+      { name: 'ksm main', amount: 12 },
     ],
   },
   {
@@ -170,7 +170,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'LDO',
     name: 'Lido DAO',
     sources: [
-      { name: 'binance', type: 'exchange', amount: 250 },
+      { name: 'binance', amount: 250 },
     ],
   },
   {
@@ -178,7 +178,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'MKR',
     name: 'Maker',
     sources: [
-      { name: 'eth main', type: 'wallet', amount: 0.3, chain: 'ethereum' },
+      { name: 'eth main', amount: 0.3 },
     ],
   },
   {
@@ -186,7 +186,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'POL',
     name: 'Polygon',
     sources: [
-      { name: 'polygon main', type: 'wallet', amount: 800, chain: 'polygon' },
+      { name: 'polygon main', amount: 800 },
     ],
   },
   {
@@ -194,7 +194,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'DOGE',
     name: 'Dogecoin',
     sources: [
-      { name: 'binance', type: 'exchange', amount: 2000 },
+      { name: 'binance', amount: 2000 },
     ],
   },
   {
@@ -202,7 +202,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'ENS',
     name: 'Ethereum Name Service',
     sources: [
-      { name: 'eth main', type: 'wallet', amount: 15, chain: 'ethereum' },
+      { name: 'eth main', amount: 15 },
     ],
   },
   {
@@ -212,7 +212,7 @@ export const rawHoldings: RawHolding[] = [
     symbol: 'DROP',
     name: 'Unlisted airdrop',
     sources: [
-      { name: 'base main', type: 'wallet', amount: 25000, chain: 'base' },
+      { name: 'base main', amount: 25000 },
     ],
   },
 ]

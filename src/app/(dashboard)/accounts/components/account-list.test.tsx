@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AccountList } from './account-list'
@@ -70,3 +70,48 @@ describe('AccountList disable', () => {
     expect(requestsTo('UpdateAccount')[0]).toEqual({ account: { id: 'off', disabled: false }, updateMask: 'disabled' })
   })
 })
+
+// A portfolio links here as /settings#account-<id>. The row can arrive with a
+// later refetch rather than the first load; the page still lands on it, once.
+describe('AccountList anchor from a portfolio link', () => {
+  const original = Element.prototype.scrollIntoView
+  afterEach(() => {
+    window.location.hash = ''
+    Element.prototype.scrollIntoView = original
+  })
+
+  it('scrolls to the linked row when a refetch brings it, and only once', async () => {
+    const scrolled: string[] = []
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this.id)
+    }
+    let listCalls = 0
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      const body = url.endsWith('/ListAccounts')
+        ? { accounts: ++listCalls === 1 ? accounts.slice(0, 1) : accounts }
+        : url.endsWith('/GetAccountHealth') ? { accounts: [], sourcesState: 'HEALTH_STATE_OK' }
+        : {}
+      return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+    window.location.hash = '#account-hand'
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={client}>
+        <AccountList />
+      </QueryClientProvider>
+    )
+
+    await screen.findByText('binance')
+    expect(scrolled).toEqual([])
+
+    await client.invalidateQueries()
+    await screen.findByText('xmr')
+    await waitFor(() => expect(scrolled).toEqual(['account-hand']))
+
+    await client.invalidateQueries()
+    await waitFor(() => expect(listCalls).toBe(3))
+    expect(scrolled).toEqual(['account-hand'])
+  })
+})
+

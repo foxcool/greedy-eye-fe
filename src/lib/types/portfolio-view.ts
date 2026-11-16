@@ -16,15 +16,15 @@ export interface PortfolioHolding {
   // present-but-unvalued rather than dropped or filled with someone else's
   // quote; see ValuationCoverage for why the backend left it out of the total.
   unpriced?: boolean
-  sources: HoldingSource[]  // breakdown by wallet/exchange
+  sources: HoldingSource[]  // breakdown by account
 }
 
+// Analytic views show economic axes only. Custody type, chain and address are
+// technical: they live in Settings -> Accounts and on the asset card, so a
+// source carries just the account name and the amount held there.
 export interface HoldingSource {
-  name: string              // e.g., "eth main", "binance", "arb main"
-  type: 'wallet' | 'exchange' | 'defi'
+  name: string              // account name, e.g. "eth main", "binance"
   amount: number
-  chain?: string            // for on-chain: "ethereum", "arbitrum", etc.
-  protocol?: string         // for defi: "aave", "uniswap", etc.
 }
 
 export interface TargetAllocation {

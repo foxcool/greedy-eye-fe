@@ -174,13 +174,7 @@ function HoldingRow({ holding, isExpanded, onToggle, showSources }: HoldingRowPr
         <tr key={`${holding.assetId}-${idx}`} className="text-xs bg-muted/30">
           <td className="px-4 py-2"></td>
           <td className="px-4 py-2 pl-10 text-muted-foreground">
-            <span className="inline-flex items-center gap-2">
-              <SourceTypeBadge type={source.type} />
-              {source.name}
-              {source.chain && (
-                <span className="opacity-60">({source.chain})</span>
-              )}
-            </span>
+            {source.name}
           </td>
           <td className="px-4 py-2 text-right text-muted-foreground font-mono">
             {formatQuantity(source.amount)}
@@ -189,20 +183,6 @@ function HoldingRow({ holding, isExpanded, onToggle, showSources }: HoldingRowPr
         </tr>
       ))}
     </>
-  )
-}
-
-function SourceTypeBadge({ type }: { type: 'wallet' | 'exchange' | 'defi' }) {
-  const styles = {
-    wallet: 'bg-blue-500/20 text-blue-500 dark:bg-blue-500/20 dark:text-blue-400',
-    exchange: 'bg-orange-500/20 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400',
-    defi: 'bg-purple-500/20 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400',
-  }
-
-  return (
-    <span className={`px-1.5 py-0.5 rounded text-[10px] uppercase font-medium ${styles[type]}`}>
-      {type}
-    </span>
   )
 }
 

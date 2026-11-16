@@ -9,7 +9,7 @@ import type {
   TargetAllocation,
   AllocationSlice 
 } from '../types/portfolio-view'
-import { rawHoldings, targetPercentages, mockPrices } from './portfolio-data'
+import { rawHoldings, targetPercentages, mockPrices, type RawHolding } from './portfolio-data'
 
 // Color palette for pie chart (deterministic based on index)
 const CHART_COLORS = [
@@ -32,7 +32,7 @@ const CHART_COLORS = [
  * This replicates the R script logic
  */
 export function calculatePortfolio(
-  holdings = rawHoldings,
+  holdings: RawHolding[] = rawHoldings,
   prices = mockPrices,
   targets = targetPercentages,
 ): PortfolioSummary {

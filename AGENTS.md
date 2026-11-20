@@ -10,7 +10,7 @@
   `dashboard.v1`; localStorage in demo mode. Registry in
   `lib/config/dashboard-widgets.ts` (definitions) and
   `components/dashboard/widget-registry.tsx` (components). Real widgets:
-  portfolio-value, heatmap. The macro widgets (rates, markets, crypto, news)
+  portfolio-value, heatmap, top-holdings. The macro widgets (rates, markets, crypto, news)
   are mock-backed and offered in demo mode only
 - Portfolios: `/portfolios` aggregate overview + list; `/portfolios/[id]` with
   Overview / Holdings / Settings tabs, scoped via PortfolioScopeProvider

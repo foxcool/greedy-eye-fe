@@ -108,7 +108,7 @@ type RankedNode = HeatmapNode & { assetId: string }
 function TopHoldingRow({ rank, node, name }: { rank: number; node: RankedNode; name?: string }) {
   // Demo has no stored price history.
   const history = usePriceHistory(DEMO_MODE ? undefined : node.assetId, WINDOW_DAYS)
-  const change = node.colorValue ?? 0
+  const change = node.colorValue
 
   return (
     <tr className="border-t border-border">
@@ -123,7 +123,11 @@ function TopHoldingRow({ rank, node, name }: { rank: number; node: RankedNode; n
       <td className="py-1 text-right tabular-nums">
         {node.price !== undefined ? formatCurrency(node.price, 2) : '—'}
       </td>
-      <td className={`py-1 text-right tabular-nums ${changeColor(change)}`}>{formatPercentage(change)}</td>
+      {change !== undefined ? (
+        <td className={`py-1 text-right tabular-nums ${changeColor(change)}`}>{formatPercentage(change)}</td>
+      ) : (
+        <td className="py-1 text-right tabular-nums text-muted-foreground">—</td>
+      )}
     </tr>
   )
 }

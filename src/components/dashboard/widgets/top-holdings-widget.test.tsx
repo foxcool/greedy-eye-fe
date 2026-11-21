@@ -63,4 +63,15 @@ describe('TopHoldingsCard', () => {
     expect(screen.getByText('Bitcoin')).toBeInTheDocument()
     expect(screen.queryByText('SBER')).toBeNull()
   })
+
+  it('shows a dash for a missing change, not a zero change', () => {
+    const noChange: HeatmapResult = {
+      ...result,
+      data: { quoteAssetId: 'usd', nodes: [{ id: 'btc', label: 'BTC', assetId: 'btc', size: 900, price: 60000 }] },
+    }
+    render(<TopHoldingsCard title="Top holdings" useData={() => noChange} limit={8} />)
+    const row = screen.getByText('BTC').closest('tr')!
+    expect(row.lastElementChild).toHaveTextContent('—')
+    expect(screen.queryByText(/0\.0+%/)).toBeNull()
+  })
 })

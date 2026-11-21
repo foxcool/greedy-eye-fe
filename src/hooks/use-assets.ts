@@ -9,6 +9,7 @@ import {
   getLatestPrice,
   getPricingStatus,
   listAssetsByIds,
+  mergeAssets,
   searchAssets,
   setAssetVerdict,
   updateAsset,
@@ -129,6 +130,34 @@ export function useDeleteAsset() {
   return useMutation({
     mutationFn: (id: string) => deleteAsset(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['assets'] }),
+  })
+}
+
+// usePlanMerge asks the backend what merging source into target would do. A
+// plan is a read: nothing to invalidate, and an outdated one is simply asked
+// again when the target changes.
+export function usePlanMerge(source: Asset, target: Asset | undefined) {
+  return useQuery({
+    queryKey: ['asset-merge-plan', source.id, target?.id],
+    queryFn: () => mergeAssets({ source, target: target!, dryRun: true }),
+    enabled: Boolean(target),
+    retry: false,
+    staleTime: 0,
+  })
+}
+
+// useMergeAssets commits a merge. Source is gone afterwards and holdings,
+// prices and rules have moved, so every asset view and the holdings are stale.
+export function useMergeAssets() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ source, target }: { source: Asset; target: Asset }) =>
+      mergeAssets({ source, target, dryRun: false }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['assets'] })
+      qc.invalidateQueries({ queryKey: ['asset'] })
+      qc.invalidateQueries({ queryKey: ['holdings'] })
+    },
   })
 }
 

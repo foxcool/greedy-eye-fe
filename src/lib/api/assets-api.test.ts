@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { deleteAssetExternalRef, listAssetsByIds, searchAssets } from './assets-api'
+import { deleteAssetExternalRef, listAssetsByIds, mergeAssets, searchAssets } from './assets-api'
 
 // The catalogue is thousands of rows of airdropped litter (personal-1asm).
 // These reads exist so a page never has to load it: what goes on the wire is
@@ -45,5 +45,38 @@ describe('deleteAssetExternalRef', () => {
     await deleteAssetExternalRef('asset-1', 'ref-1')
     expect(vi.mocked(fetch).mock.calls[0][0]).toContain('DeleteAssetExternalRef')
     expect(bodies()).toEqual([{ assetId: 'asset-1', id: 'ref-1' }])
+  })
+})
+
+describe('mergeAssets', () => {
+  it('always states dry_run and the symbols the caller saw, and reads counts as numbers', async () => {
+    vi.mocked(fetch).mockImplementation(async () =>
+      new Response(JSON.stringify({ dryRun: true, holdingsMoved: '3', pricesDropped: '1' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+
+    const plan = await mergeAssets({
+      source: { id: 's', symbol: 'USDT' },
+      target: { id: 't', symbol: 'USDT' },
+      dryRun: true,
+    })
+
+    expect(vi.mocked(fetch).mock.calls[0][0]).toContain('MergeAssets')
+    expect(bodies()).toEqual([{
+      sourceId: 's', targetId: 't',
+      expectedSourceSymbol: 'USDT', expectedTargetSymbol: 'USDT',
+      dryRun: true,
+    }])
+    // Zero counts are absent on the wire; they must read as 0, not NaN.
+    expect(plan).toEqual({
+      dryRun: true, holdingsMoved: 3, ledgerLegsMoved: 0, pricesMoved: 0, pricesDropped: 1,
+      externalRefsMoved: 0, riskFlagsMoved: 0, rulesRewritten: 0,
+    })
+  })
+
+  it('sends dryRun false to commit', async () => {
+    await mergeAssets({ source: { id: 's', symbol: 'A' }, target: { id: 't', symbol: 'B' }, dryRun: false })
+    expect(bodies()[0]).toMatchObject({ dryRun: false })
   })
 })

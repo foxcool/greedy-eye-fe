@@ -106,6 +106,52 @@ export async function deleteAsset(id: string): Promise<void> {
   await apiClient.post(RPC('DeleteAsset'), { id })
 }
 
+// --- Merge (fold a duplicate catalogue row into the asset it duplicates) ---
+
+// What a merge moved or would move. The wire carries int64 counts as strings
+// and leaves zero counts out, so every field arrives here as a number.
+export interface MergePlan {
+  dryRun: boolean
+  holdingsMoved: number
+  ledgerLegsMoved: number
+  pricesMoved: number
+  pricesDropped: number
+  externalRefsMoved: number
+  riskFlagsMoved: number
+  rulesRewritten: number
+}
+
+type MergeWire = Partial<Record<Exclude<keyof MergePlan, 'dryRun'>, string>> & { dryRun?: boolean }
+
+// mergeAssets folds source into target; source is deleted. Admin-only and
+// irreversible, so the backend only plans unless dryRun is false — and this
+// always says which, never leaning on the server default. The symbols are the
+// ones the caller showed: the backend refuses when a row has changed since.
+export async function mergeAssets(input: {
+  source: Pick<Asset, 'id' | 'symbol'>
+  target: Pick<Asset, 'id' | 'symbol'>
+  dryRun: boolean
+}): Promise<MergePlan> {
+  const res = await apiClient.post<MergeWire>(RPC('MergeAssets'), {
+    sourceId: input.source.id,
+    targetId: input.target.id,
+    expectedSourceSymbol: input.source.symbol ?? '',
+    expectedTargetSymbol: input.target.symbol ?? '',
+    dryRun: input.dryRun,
+  })
+  const n = (v?: string) => Number(v ?? 0)
+  return {
+    dryRun: Boolean(res.dryRun),
+    holdingsMoved: n(res.holdingsMoved),
+    ledgerLegsMoved: n(res.ledgerLegsMoved),
+    pricesMoved: n(res.pricesMoved),
+    pricesDropped: n(res.pricesDropped),
+    externalRefsMoved: n(res.externalRefsMoved),
+    riskFlagsMoved: n(res.riskFlagsMoved),
+    rulesRewritten: n(res.rulesRewritten),
+  }
+}
+
 // --- Risk flags (identity axis 2) ---
 
 export interface AddRiskFlagInput {

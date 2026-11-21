@@ -10,6 +10,7 @@ import {
 import type { WidgetId, WidgetInstance } from '@/lib/config/dashboard-widgets'
 import { HeatmapWidget } from './widgets/heatmap-widget'
 import { PortfolioValueWidget } from './widgets/portfolio-value-widget'
+import { TopHoldingsWidget } from './widgets/top-holdings-widget'
 
 export interface WidgetProps {
   instance: WidgetInstance
@@ -45,6 +46,7 @@ const NO_SOURCE = 'No data source connected yet'
 export const WIDGET_COMPONENTS: Record<WidgetId, (props: WidgetProps) => React.ReactNode> = {
   'portfolio-value': PortfolioValueWidget,
   heatmap: HeatmapWidget,
+  'top-holdings': TopHoldingsWidget,
   'interest-rates': InterestRatesWidget,
   markets: MarketsWidget,
   'crypto-overview': CryptoOverviewWidget,

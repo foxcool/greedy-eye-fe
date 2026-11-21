@@ -15,6 +15,7 @@ import { z } from 'zod'
 export type WidgetId =
   | 'portfolio-value'
   | 'heatmap'
+  | 'top-holdings'
   | 'interest-rates'
   | 'markets'
   | 'crypto-overview'
@@ -87,6 +88,19 @@ const PORTFOLIO_FIELD: ParamField = {
   allLabel: 'All portfolios',
 }
 
+// MARKET and BASKET are backend scopes that answer Unimplemented. They are
+// absent here rather than disabled: an option that always fails is a promise
+// the system does not keep.
+const SCOPE_FIELD: ParamField = {
+  key: 'scope',
+  label: 'Scope',
+  kind: 'select',
+  options: [
+    { value: 'balance', label: 'All holdings' },
+    { value: 'portfolio', label: 'One portfolio' },
+  ],
+}
+
 export const WIDGET_DEFINITIONS: Record<WidgetId, WidgetDefinition> = {
   'portfolio-value': {
     type: 'portfolio-value',
@@ -102,21 +116,15 @@ export const WIDGET_DEFINITIONS: Record<WidgetId, WidgetDefinition> = {
     description: 'Holdings as a treemap: tile size is value, colour is price change.',
     defaultParams: { scope: 'balance', portfolioId: '' },
     defaultSize: 'l',
-    fields: [
-      {
-        key: 'scope',
-        label: 'Scope',
-        kind: 'select',
-        // MARKET and BASKET are backend scopes that answer Unimplemented. They
-        // are absent here rather than disabled: an option that always fails is
-        // a promise the system does not keep.
-        options: [
-          { value: 'balance', label: 'All holdings' },
-          { value: 'portfolio', label: 'One portfolio' },
-        ],
-      },
-      PORTFOLIO_FIELD,
-    ],
+    fields: [SCOPE_FIELD, PORTFOLIO_FIELD],
+  },
+  'top-holdings': {
+    type: 'top-holdings',
+    title: 'Top holdings',
+    description: 'Your largest priced positions with a 7d sparkline, last price and 7d change.',
+    defaultParams: { scope: 'balance', portfolioId: '' },
+    defaultSize: 'm',
+    fields: [SCOPE_FIELD, PORTFOLIO_FIELD],
   },
   'interest-rates': {
     type: 'interest-rates',

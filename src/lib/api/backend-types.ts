@@ -357,6 +357,8 @@ export interface ValuationCoverage {
   unpricedCount?: number
   unpriced?: UnpricedHolding[]
   unpricedTruncated?: boolean
+  // The oldest fresh quote behind the result; unset when nothing was priced.
+  pricesAsOf?: string
 }
 
 export interface UnpricedHolding {
@@ -419,6 +421,8 @@ export interface GetHeatmapResponse {
   nodes?: HeatmapNode[]
   quoteAssetId: string
   calculatedAt?: string
+  // An unpriced holding draws no node, so this is the only place it shows up.
+  coverage?: ValuationCoverage
 }
 
 // Converts int64 holding amount string to decimal number.

@@ -15,6 +15,7 @@ import { useDeleteAsset, useUpdateAsset } from '@/hooks/use-assets'
 import { useAuth } from '@/lib/auth/auth-context'
 import type { Asset } from '@/lib/api/backend-types'
 import { AssetForm } from '../../components/asset-form'
+import { MergeAssetDialog } from './merge-asset-dialog'
 
 /**
  * Edit and delete for a catalogue entry, kept off the list on purpose.
@@ -24,6 +25,8 @@ import { AssetForm } from '../../components/asset-form'
  * rows. Both are admin-only on the backend, so the menu is not rendered for
  * anyone else — an Edit that always answers PermissionDenied is a dead control.
  * Delete asks first: it removes the entry for everyone, not from the reader's view.
+ * Merge is for a duplicate row of a real instrument: it moves what points here
+ * onto the other row before deleting this one, and shows the plan first.
  */
 export function AssetActions({ asset }: { asset: Asset }) {
   const { isAdmin } = useAuth()
@@ -36,6 +39,7 @@ function AdminAssetActions({ asset }: { asset: Asset }) {
   const update = useUpdateAsset()
   const remove = useDeleteAsset()
   const [editOpen, setEditOpen] = useState(false)
+  const [mergeOpen, setMergeOpen] = useState(false)
 
   const onDelete = () => {
     const label = asset.symbol ?? asset.name
@@ -54,6 +58,9 @@ function AdminAssetActions({ asset }: { asset: Asset }) {
         <DropdownMenuContent align="end">
           <DropdownMenuItem onSelect={() => setEditOpen(true)}>Edit</DropdownMenuItem>
           <DropdownMenuSeparator />
+          <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => setMergeOpen(true)}>
+            Merge into another asset…
+          </DropdownMenuItem>
           <DropdownMenuItem
             className="text-destructive focus:text-destructive"
             disabled={remove.isPending}
@@ -63,6 +70,8 @@ function AdminAssetActions({ asset }: { asset: Asset }) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <MergeAssetDialog source={asset} open={mergeOpen} onOpenChange={setMergeOpen} />
 
       <AssetForm
         open={editOpen}

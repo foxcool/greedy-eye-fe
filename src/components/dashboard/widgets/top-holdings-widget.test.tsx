@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { HeatmapResult } from '@/hooks/use-heatmap'
 import type { PricePoint } from '@/hooks/use-price-history'
-import { Sparkline, TopHoldingsCard } from './top-holdings-widget'
+import { MIN_SPARKLINE_POINTS, Sparkline, TopHoldingsCard } from './top-holdings-widget'
 
 vi.mock('@/hooks/use-assets', () => ({
   useAssetsByIds: () => ({ data: [{ id: 'btc', name: 'Bitcoin' }] }),
@@ -20,13 +20,13 @@ function series(n: number): PricePoint[] {
 }
 
 describe('Sparkline', () => {
-  it('draws no line through a 3-point series', () => {
-    const { container } = render(<Sparkline points={series(3)} />)
+  it('draws no line through a series one point short', () => {
+    const { container } = render(<Sparkline points={series(MIN_SPARKLINE_POINTS - 1)} />)
     expect(container.querySelector('polyline')).toBeNull()
   })
 
   it('draws a line once the series has enough points', () => {
-    const { container } = render(<Sparkline points={series(8)} />)
+    const { container } = render(<Sparkline points={series(MIN_SPARKLINE_POINTS)} />)
     expect(container.querySelector('polyline')).not.toBeNull()
   })
 })

@@ -8,8 +8,8 @@ import type { Asset } from '@/lib/api/backend-types'
 const push = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }))
 
-const source = { id: 'src', symbol: 'USDT', name: 'USDT (forex)' } as Asset
-const target = { id: 'tgt', symbol: 'USDT', name: 'Tether' } as Asset
+const source = { id: '019fcca8-0000-7000-8000-00000000aaaa', symbol: 'USDT', name: 'Tether', type: 'ASSET_TYPE_FOREX', market: 'crypto' } as Asset
+const target = { id: '019fcca8-0000-7000-8000-00000000bbbb', symbol: 'USDT', name: 'Tether', type: 'ASSET_TYPE_CRYPTOCURRENCY', market: 'crypto' } as Asset
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -41,7 +41,9 @@ async function pickTarget() {
   fireEvent.change(screen.getByRole('combobox', { name: 'Search the asset to merge into' }), {
     target: { value: 'usdt' },
   })
-  await userEvent.click(await screen.findByRole('option', { name: 'USDT — Tether' }))
+  // Twins share a label and, created together, an id prefix; the identity
+  // line's id tail tells the target apart.
+  await userEvent.click(await screen.findByRole('option', { name: /…0000bbbb/ }))
 }
 
 // A merge cannot be undone: the commit button must stand next to the plan for
@@ -57,18 +59,19 @@ describe('MergeAssetDialog', () => {
     expect(commit).toBeDisabled()
 
     await pickTarget()
-    expect(screen.queryByRole('option', { name: 'USDT — USDT (forex)' })).toBeNull()
+    expect(screen.queryByRole('option', { name: /…0000aaaa/ })).toBeNull()
+    expect(screen.getByText(/…0000bbbb/)).toBeInTheDocument()
 
     const plan = await screen.findByRole('list', { name: 'Merge plan' })
     expect(plan).toHaveTextContent('2 holdings move')
-    expect(plan).toHaveTextContent('1 prices are dropped')
-    expect(plan).toHaveTextContent('1 automation rules are repointed')
+    expect(plan).toHaveTextContent('1 price is dropped')
+    expect(plan).toHaveTextContent('1 automation rule is repointed')
     expect(plan).not.toHaveTextContent('ledger')
 
     await userEvent.click(commit)
-    await vi.waitFor(() => expect(push).toHaveBeenCalledWith('/assets/tgt'))
+    await vi.waitFor(() => expect(push).toHaveBeenCalledWith('/assets/019fcca8-0000-7000-8000-00000000bbbb'))
     expect(mergeBodies().map((b) => b.dryRun)).toEqual([true, false])
-    expect(mergeBodies()[1]).toMatchObject({ sourceId: 'src', targetId: 'tgt' })
+    expect(mergeBodies()[1]).toMatchObject({ sourceId: '019fcca8-0000-7000-8000-00000000aaaa', targetId: '019fcca8-0000-7000-8000-00000000bbbb' })
   })
 
   it('shows a refusal in the backend words and offers no commit', async () => {

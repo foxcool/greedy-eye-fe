@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AssetPicker, assetLabel } from '@/components/asset/asset-picker'
+import { AssetPicker, assetIdentity, assetLabel } from '@/components/asset/asset-picker'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -58,8 +58,8 @@ export function MergeAssetDialog({
         <DialogHeader>
           <DialogTitle>Merge {assetLabel(source)} into…</DialogTitle>
           <DialogDescription>
-            Everything that points at this asset moves to the one you pick, and this asset is deleted
-            for every user. It cannot be undone.
+            Everything that points at this asset ({assetIdentity(source)}) moves to the one you pick,
+            and this asset is deleted for every user. It cannot be undone.
           </DialogDescription>
         </DialogHeader>
 
@@ -67,6 +67,7 @@ export function MergeAssetDialog({
           <div className="flex items-center justify-between gap-2 text-sm">
             <span>
               Into <strong>{assetLabel(target)}</strong>
+              <span className="block text-xs text-muted-foreground">{assetIdentity(target)}</span>
             </span>
             <Button type="button" variant="ghost" size="sm" onClick={() => setTarget(undefined)}>
               Change
@@ -76,6 +77,7 @@ export function MergeAssetDialog({
           <AssetPicker
             aria-label="Search the asset to merge into"
             exclude={new Set([source.id])}
+            showIdentity
             onSelect={setTarget}
           />
         )}
@@ -111,14 +113,15 @@ export function MergeAssetDialog({
   )
 }
 
-const PLAN_ROWS: [keyof Omit<MergePlan, 'dryRun'>, string][] = [
-  ['holdingsMoved', 'holdings move'],
-  ['ledgerLegsMoved', 'ledger entries move'],
-  ['pricesMoved', 'prices move'],
-  ['pricesDropped', 'prices are dropped (the target already has them)'],
-  ['externalRefsMoved', 'contract and provider bindings move'],
-  ['riskFlagsMoved', 'risk flags move'],
-  ['rulesRewritten', 'automation rules are repointed'],
+// [field, said of one, said of several]
+const PLAN_ROWS: [keyof Omit<MergePlan, 'dryRun'>, string, string][] = [
+  ['holdingsMoved', 'holding moves', 'holdings move'],
+  ['ledgerLegsMoved', 'ledger entry moves', 'ledger entries move'],
+  ['pricesMoved', 'price moves', 'prices move'],
+  ['pricesDropped', 'price is dropped (the target already has it)', 'prices are dropped (the target already has them)'],
+  ['externalRefsMoved', 'contract or provider binding moves', 'contract and provider bindings move'],
+  ['riskFlagsMoved', 'risk flag moves', 'risk flags move'],
+  ['rulesRewritten', 'automation rule is repointed', 'automation rules are repointed'],
 ]
 
 export function MergePlanList({ plan }: { plan: MergePlan }) {
@@ -128,9 +131,9 @@ export function MergePlanList({ plan }: { plan: MergePlan }) {
   }
   return (
     <ul aria-label="Merge plan" className="space-y-0.5 text-sm">
-      {rows.map(([key, label]) => (
+      {rows.map(([key, one, many]) => (
         <li key={key}>
-          <span className="tabular-nums font-medium">{plan[key]}</span> {label}
+          <span className="tabular-nums font-medium">{plan[key]}</span> {plan[key] === 1 ? one : many}
         </li>
       ))}
     </ul>

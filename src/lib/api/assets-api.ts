@@ -4,6 +4,7 @@ import type {
   AssetPricingStatus,
   AssetRiskFlag,
   IdentityVerdict,
+  MacroSeries,
   RiskActionHint,
   RiskFlagKind,
   StoredPrice,
@@ -249,4 +250,14 @@ export async function listPriceHistory(
     pageToken = res.nextPageToken
   }
   return all
+}
+
+// --- Macro (policy rates) ---
+
+// getMacroRates reads every series the backend supports. A series whose source
+// cannot answer comes back unavailable with a reason; the call itself does not
+// fail for it.
+export async function getMacroRates(): Promise<MacroSeries[]> {
+  const res = await apiClient.post<{ series?: MacroSeries[] }>(RPC('GetMacroRates'), {})
+  return res.series ?? []
 }

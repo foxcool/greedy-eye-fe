@@ -5,12 +5,21 @@ import { Input } from '@/components/ui/input'
 import { useAssetSearch } from '@/hooks/use-assets'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import type { Asset } from '@/lib/api/backend-types'
+import { assetTypeLabel } from '@/lib/assets/catalogue'
 
 // One server page; a picker is for landing on a known asset, not browsing.
 const SEARCH_LIMIT = 50
 
 export function assetLabel(a: Pick<Asset, 'symbol' | 'name'>): string {
   return a.symbol ? `${a.symbol.toUpperCase()} — ${a.name}` : a.name
+}
+
+// assetIdentity tells apart rows that share a label: a duplicate of an asset
+// usually carries the same symbol and name, and differs only here. The id is
+// cut from its end: a UUIDv7 starts with its creation time, so rows created in
+// one batch share a prefix.
+export function assetIdentity(a: Pick<Asset, 'id' | 'type' | 'market'>): string {
+  return `${assetTypeLabel(a.type)} · ${a.market || 'no market'} · …${a.id.slice(-8)}`
 }
 
 /**
@@ -26,11 +35,14 @@ export function AssetPicker({
   exclude,
   placeholder = 'Search asset by name, symbol or contract…',
   className,
+  showIdentity = false,
   'aria-label': ariaLabel = 'Search assets',
 }: {
   onSelect: (asset: Asset) => void
   /** Ids that are already chosen and should not be offered again. */
   exclude?: ReadonlySet<string>
+  /** Show type, market and id under each option, for picking among twins. */
+  showIdentity?: boolean
   placeholder?: string
   className?: string
   'aria-label'?: string
@@ -90,6 +102,9 @@ export function AssetPicker({
                   }}
                 >
                   {assetLabel(a)}
+                  {showIdentity && (
+                    <span className="block text-xs text-muted-foreground">{assetIdentity(a)}</span>
+                  )}
                 </li>
               ))}
             </ul>

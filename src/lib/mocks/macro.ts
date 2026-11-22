@@ -1,19 +1,14 @@
+import type { MacroSeries } from '@/lib/api/backend-types'
+
 /**
  * Macro / world-finance mock data for the dashboard widgets.
  *
- * No backend source exists yet. These typed shapes are the contract the real
- * fetchers will implement later (rates from CB feeds, indices from a market API,
- * crypto from CoinGecko, news from an RSS/news API). Swap the mock bodies for
+ * Policy rates are real (GetMacroRates); demoMacroRates stands in for them in
+ * demo mode only. The rest has no backend source yet: these typed shapes are
+ * the contract the real fetchers will implement later (indices from a market
+ * API, crypto from CoinGecko, news from an RSS/news API). Swap the mock bodies for
  * real `fetch` calls returning the same types and the widgets keep working.
  */
-
-export interface InterestRate {
-  bank: string // central bank short code, e.g. FED
-  region: string
-  rate: number // current policy rate, %
-  deltaBps: number // last change in basis points (+/-)
-  nextMeeting: string // ISO date
-}
 
 export interface MarketIndex {
   symbol: string
@@ -41,7 +36,6 @@ export interface NewsItem {
 }
 
 export interface MacroSnapshot {
-  rates: InterestRate[]
   markets: MarketIndex[]
   crypto: CryptoOverview
   news: NewsItem[]
@@ -49,12 +43,6 @@ export interface MacroSnapshot {
 }
 
 const snapshot: MacroSnapshot = {
-  rates: [
-    { bank: 'FED', region: 'US', rate: 4.5, deltaBps: -25, nextMeeting: '2026-07-29' },
-    { bank: 'ECB', region: 'EU', rate: 2.4, deltaBps: -25, nextMeeting: '2026-07-24' },
-    { bank: 'CBR', region: 'RU', rate: 18.0, deltaBps: -100, nextMeeting: '2026-07-25' },
-    { bank: 'BoE', region: 'UK', rate: 4.0, deltaBps: 0, nextMeeting: '2026-08-07' },
-  ],
   markets: [
     { symbol: 'SPX', name: 'S&P 500', region: 'US', value: 5894.2, changePct: 0.62 },
     { symbol: 'NDX', name: 'Nasdaq 100', region: 'US', value: 21340.5, changePct: 0.91 },
@@ -98,6 +86,12 @@ const snapshot: MacroSnapshot = {
   ],
   asOf: '2026-06-17T09:30:00Z',
 }
+
+/** Policy rates for demo mode, in the shape GetMacroRates returns. */
+export const demoMacroRates: MacroSeries[] = [
+  { series: 'fed_funds', available: true, value: '4.33', observationDate: '2026-06-16', source: 'fred' },
+  { series: 'cbr_key_rate', available: true, value: '20', observationDate: '2026-06-16', source: 'cbr' },
+]
 
 /** Returns the current macro snapshot. Async to mirror the future real fetcher. */
 export async function fetchMacroSnapshot(): Promise<MacroSnapshot> {

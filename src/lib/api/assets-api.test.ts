@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { deleteAssetExternalRef, listAssetsByIds, mergeAssets, searchAssets } from './assets-api'
+import { deleteAssetExternalRef, getMacroRates, listAssetsByIds, mergeAssets, searchAssets } from './assets-api'
 
 // The catalogue is thousands of rows of airdropped litter (personal-1asm).
 // These reads exist so a page never has to load it: what goes on the wire is
@@ -78,5 +78,19 @@ describe('mergeAssets', () => {
   it('sends dryRun false to commit', async () => {
     await mergeAssets({ source: { id: 's', symbol: 'A' }, target: { id: 't', symbol: 'B' }, dryRun: false })
     expect(bodies()[0]).toMatchObject({ dryRun: false })
+  })
+})
+
+describe('getMacroRates', () => {
+  it('asks for every supported series and returns them as sent', async () => {
+    vi.mocked(fetch).mockImplementation(async () =>
+      new Response(JSON.stringify({ series: [{ series: 'fed_funds', available: true, value: '3.88' }] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+    const series = await getMacroRates()
+    expect(vi.mocked(fetch).mock.calls[0][0]).toContain('GetMacroRates')
+    expect(bodies()).toEqual([{}])
+    expect(series).toEqual([{ series: 'fed_funds', available: true, value: '3.88' }])
   })
 })

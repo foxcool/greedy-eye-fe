@@ -473,3 +473,17 @@ export function decimalStringToRaw(value: string, decimals: number): string {
   }
   return BigInt((m[1] || '0') + fraction.padEnd(decimals, '0')).toString()
 }
+
+// MacroSeries is one policy-rate series from GetMacroRates. Nothing is valued
+// from it; it is shown as read. value is a decimal string in percent, never a
+// float. observationDate is the publisher's own date, readAt when this
+// instance read it (the backend caches for hours).
+export interface MacroSeries {
+  series: string
+  available?: boolean
+  unavailableReason?: string
+  value?: string
+  observationDate?: string
+  readAt?: string
+  source?: string
+}

@@ -129,11 +129,10 @@ export const WIDGET_DEFINITIONS: Record<WidgetId, WidgetDefinition> = {
   'interest-rates': {
     type: 'interest-rates',
     title: 'Interest rates',
-    description: 'Central bank rates and next meeting dates.',
+    description: 'US Fed funds rate and the Bank of Russia key rate, with the date each was set.',
     defaultParams: {},
-    defaultSize: 'm',
+    defaultSize: 's',
     fields: [],
-    demoOnly: true,
   },
   markets: {
     type: 'markets',

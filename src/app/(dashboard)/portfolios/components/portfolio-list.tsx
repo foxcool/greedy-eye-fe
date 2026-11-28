@@ -16,7 +16,6 @@ import {
   usePortfolios,
   useCreatePortfolio,
   useUpdatePortfolio,
-  useDeletePortfolio,
 } from '@/hooks/use-portfolios'
 import type { Portfolio } from '@/lib/api/backend-types'
 
@@ -24,7 +23,6 @@ export function PortfolioList() {
   const { data: portfolios = [], isLoading, error } = usePortfolios()
   const create = useCreatePortfolio()
   const update = useUpdatePortfolio()
-  const remove = useDeletePortfolio()
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Portfolio | null>(null)
@@ -75,6 +73,8 @@ export function PortfolioList() {
                   {new Date(p.createdAt).toLocaleDateString()}
                 </TableCell>
                 <TableCell className="text-right">
+                  {/* No Delete here on purpose: destructive actions live on the
+                      portfolio's own Settings tab, behind its confirmation. */}
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" size="sm" asChild>
                       <Link href={`/portfolios/${p.id}`}>Holdings</Link>
@@ -85,14 +85,6 @@ export function PortfolioList() {
                       onClick={() => setEditTarget(p)}
                     >
                       Edit
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => remove.mutate(p.id)}
-                      disabled={remove.isPending}
-                    >
-                      Delete
                     </Button>
                   </div>
                 </TableCell>
